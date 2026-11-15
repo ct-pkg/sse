@@ -1,0 +1,24 @@
+e1 event=ping msg=0 id=- has_id=0 retry=-1 has_retry=0 data=[x]
+e2 event=message msg=1 id=- has_id=0 retry=-1 has_retry=0 data=[y]
+e3 event=message msg=1 id=- has_id=0 retry=-1 has_retry=0 data=[z]
+e4 event=message msg=1 id=1 has_id=1 retry=-1 has_retry=0 data=[a]
+last_id=1
+e5 event=message msg=1 id=1 has_id=1 retry=-1 has_retry=0 data=[b]
+hint_before=-1
+e6 event=message msg=1 id=1 has_id=1 retry=3000 has_retry=1 data=[c]
+hint_3000=3000
+e7 event=message msg=1 id=1 has_id=1 retry=3000 has_retry=1 data=[d]
+e8 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[e]
+hint_zero=0
+e9 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[f]
+e10 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[g]
+e11 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[h]
+e12 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[i]
+e13 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[j]
+e14 event=message msg=1 id=1 has_id=1 retry=0 has_retry=1 data=[k]
+id_after_nul=1
+e15 event=message msg=1 id=- has_id=0 retry=0 has_retry=1 data=[l]
+last_id_null=1
+e16 event=message msg=1 id=7 has_id=1 retry=0 has_retry=1 data=[m]
+last_id_final=7
+deleted

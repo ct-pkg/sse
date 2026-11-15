@@ -1,0 +1,78 @@
+/*
+ * S3: event / id / retry semantics.
+ *
+ * event: default "message", cleared after every dispatch (also on a block
+ *        without data). id: stream-level, empty clears it, a value with an
+ *        embedded NUL is ignored. retry: stream-level, digits only, 0 is a
+ *        legal value, invalid values leave the previous value alone.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d event=%s msg=%d id=%s has_id=%d retry=%d has_retry=%d data=[%s]\n",
+           *n, ev->event, ev->is_message(),
+           ev->id != 0 ? ev->id : "-", ev->has_id(),
+           ev->retry, ev->has_retry(), ev->data);
+    return 0;
+}
+
+static void feed_str(SseParser *p, char *s)
+{
+    p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char idnul[] = "id: a\0b\n\n";
+    int n = 0;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    feed_str(p, "event: ping\ndata: x\n\n");
+    feed_str(p, "data: y\n\n");
+    feed_str(p, "event:\ndata: z\n\n");
+    feed_str(p, "id: 1\ndata: a\n\n");
+    printf("last_id=%s\n", p->last_event_id());
+    feed_str(p, "data: b\n\n");
+
+    printf("hint_before=%d\n", p->retry_hint());
+    feed_str(p, "retry: 3000\ndata: c\n\n");
+    printf("hint_3000=%d\n", p->retry_hint());
+    feed_str(p, "data: d\n\n");
+    feed_str(p, "retry: 0\ndata: e\n\n");
+    printf("hint_zero=%d\n", p->retry_hint());
+    feed_str(p, "retry: +5\ndata: f\n\n");
+    feed_str(p, "retry: -1\ndata: g\n\n");
+    feed_str(p, "retry: 3x\ndata: h\n\n");
+    feed_str(p, "retry:\ndata: i\n\n");
+
+    feed_str(p, "event: ghost\n\n");
+    feed_str(p, "data: j\n\n");
+
+    p->feed(idnul, (int)sizeof(idnul) - 1);
+    feed_str(p, "data: k\n\n");
+    printf("id_after_nul=%s\n", p->last_event_id());
+
+    feed_str(p, "id:\n");
+    feed_str(p, "data: l\n\n");
+    printf("last_id_null=%d\n", p->last_event_id() == 0);
+
+    feed_str(p, "id: 7\n\n");
+    feed_str(p, "data: m\n\n");
+    printf("last_id_final=%s\n", p->last_event_id());
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}
