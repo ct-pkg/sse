@@ -1,0 +1,10 @@
+inner_feed=-1
+feed_in_cb rc=-1 err=1 code=4 msg=reentrant call is not allowed events=1
+after_feed rc=1 err=0 code=0 msg=- events=2
+reset_in_cb rc=-1 err=1 code=4 msg=reentrant call is not allowed events=3
+after_reset rc=1 err=0 code=0 msg=- events=4
+free_in_cb rc=-1 err=1 code=4 msg=reentrant call is not allowed events=5
+after_free rc=1 err=0 code=0 msg=- events=6
+abort_in_cb rc=-1 err=1 code=3 msg=callback aborted events=7
+after_abort rc=1 err=0 code=0 msg=- events=8
+deleted
