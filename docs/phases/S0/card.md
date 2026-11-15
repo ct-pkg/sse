@@ -57,6 +57,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | 符号 | 契约 |
 | --- | --- |
 | `SseParser *sse_parser_new(void)` | `calloc` 成功返回实例；失败返回 0 |
+| `void sse_parser_free(SseParser *p)` | 走内部分配漏斗的销毁出口：释放缓冲并释放结构；不得与 `delete` 并用 |
 | `SseEvent *sse_event_copy(SseEvent *ev)` | 深拷贝；OOM 返回 0；只接受 borrow 视图 |
 | `void sse_event_free(SseEvent *ev)` | 只释放 copy 的结果（字段 + 结构） |
 | `SseEvent.has_id()` | `id != NULL` |
@@ -77,6 +78,8 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | `SseParser *SseRegistry.make(char *name)` | 查表构造；缺失返回 0 并置 err |
 | `int SseRegistry.error()` | 0 成功、1 缺失、2 重键、3 满 |
 | `int SseRegistry.size()` | 当前条目数 |
+
+清单外：`sse_test_alloc_hook` 是测试注入点，**不是**公开 API，不进生成头；`--lib` 构建中它为 `static`。
 
 ## 4 行为契约（冻结）
 
@@ -101,6 +104,19 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 清空：行/data/event 缓冲、`has_data`、`saw_cr`、BOM 状态、错误文本、错误标志、finish 标志。
 保留：lastEventId 及有效性、retry 及有效性、回调注册、`max_line_bytes`。
 返回 void。
+
+### A-1 分配与销毁（第 6/7 题裁定）
+
+1. 所有堆分配与释放经两个内部函数指针（默认 `malloc` / `free`）；测试可用 `sse_test_alloc_hook` 在运行期替换。
+2. 两个指针与钩子**不进生成头**；exe 构建中钩子是头外内部符号，`--lib` 构建中为 `static`，均不构成公开 ABI。
+3. 失败注入次数由测试桩的运行期变量控制；包内没有桩、没有编译期开关。
+4. `sse_parser_free` 是漏斗内的销毁出口；`delete` 的最终 `free` 由编译器发出，绕过漏斗计数。二者不得并用。
+
+### C-1 并发边界（第 8 题裁定，契约而非未测）
+
+1. 同一个 parser 不得被多线程同时 `feed` / `finish` / `reset` / `sse_parser_free`。
+2. 回调在调用 `feed` 的线程上**同步**触发；包内无锁、无原子操作。
+3. 替换 alloc/free 指针是进程级操作，必须在并发使用前完成。
 
 ### W-1 WHATWG 十条（唯一合规清单）
 
@@ -169,6 +185,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | S6 | `sse_event_copy`/`sse_event_free` + `s6_copy` 夹具 | `bash test/run.sh s6_copy` | `feat(sse): S6 拷贝出口` | M | 是 |
 | S7 | README + 集成样例 + `s7_integration` 夹具 | `bash test/run.sh s7_integration` | `test(sse): S7 示例与文档` | S | 是 |
 | S8 | 值返回注册表 + `s8_registry` 夹具 | `bash test/run.sh s8_registry` | `feat(sse): S8 值返回注册表` | M | 是 |
+| S9 | 分配器注入、OOM/计数夹具 | `bash test/run.sh s9_oom`；`bash test/run.sh s9_alloc_count` | `feat(sse): S9 分配器注入与计数` | M | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -188,6 +205,9 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-10 | R-1 七条：缺失/重键/满/init/首条生效逐条有夹具断言 | `bash test/run.sh s8_registry` |
 | E-11 | R-2 五条：未设置、`retry: 0`、跨事件保持、reset 保留逐条有夹具断言 | `bash test/run.sh s3_retry_zero` |
 | E-12 | `max_line_bytes(n)` 的 `n` 是内容字节上限：恰好 `n` 字节通过、`n+1` 字节报错（以 `n=4096` 写死） | `bash test/run.sh s5_limits` |
+| E-13 | 四处 OOM 注入（parser / 行缓冲 / data 缓冲 / `sse_event_copy`）分别断言失败返回值、`has_error()` 与 `out of memory` | `bash test/run.sh s9_oom` |
+| E-14 | alloc/free 计数在整块、逐字节、伪随机三种切法下相等且 `live == 0`；文档写明只证明整块缓冲漏释放 | `bash test/run.sh s9_alloc_count` |
+| E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../reviews/S9-allocator.md) §5 人工核对 |
 
 ## 7 非目标
 
@@ -202,3 +222,5 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 2026-11-15 | 新增 S8：负责人指定「注册表方法返回宿主自身」形态；实测 struct 按值返回可用，int 宿主无法承载注册表状态，故用 struct 宿主，保留 `sse_parser_new` 作为构造器函数值 | [S8-int-host](../reviews/S8-int-host.md)、`s8_registry` |
 | 2026-11-15 | 第 4 题裁定：parser 的 retry 拆为 `has_retry()` + `retry_hint()`；`retry: 0` 为已设置；未设置时 hint 返回值不构成契约 | `s3_retry_zero`、R-2 |
 | 2026-11-15 | 第 5 题裁定：`max_line_bytes(n)` 的 `n` 是内容字节上限（非含 NUL 容量）；恰好 `n` 合法、`n+1` 报错，判据以 `n=4096` 写死 | `s5_limits`、E-12 |
+| 2026-11-15 | 第 6/7 题：新增 S9 分配器注入与 OOM/计数夹具；新增 `sse_parser_free` 作为漏斗内销毁出口；并发边界写成契约 C-1 | [S9-allocator](../reviews/S9-allocator.md)、E-13/E-14 |
+| 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../reviews/S9-allocator.md) §5、E-15 |

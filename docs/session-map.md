@@ -6,3 +6,4 @@
 | 2026-11-15 | S1–S6 实施（骨架/闭环/字段/分片/限额/拷贝） | `sse/sse.h.ct`、`test/run.sh`、`test/fixtures/s1_*`…`s6_*` |
 | 2026-11-15 | S7 文档与集成示例 | `README.md`、`test/fixtures/s7_integration.*` |
 | 2026-11-15 | S8 值返回注册表与内置类型宿主探针 | `sse/sse.h.ct`（SseRegistry）、`test/fixtures/s8_registry.*`、`docs/reviews/S8-int-host.md` |
+| 2026-11-15 | S9 分配器注入、OOM 与计数门禁登记 | `sse/sse.h.ct`（alloc/free 漏斗、`sse_parser_free`）、`test/fixtures/s9_*`、`docs/reviews/S9-allocator.md` |

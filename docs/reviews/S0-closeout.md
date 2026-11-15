@@ -82,6 +82,7 @@ ok s6_borrow_uaf (asan abort as expected)
 ```text
 sse_SseParser_Drop_drop
 sse_sse_parser_new
+sse_sse_parser_free
 sse_sse_event_copy
 sse_sse_event_free
 sse_SseEvent_has_id / has_retry / is_message
@@ -96,6 +97,8 @@ sse_SseParser_has_error / error_msg / last_event_id / has_retry / retry_hint / r
 - `ASAN=1 bash test/run.sh s6_copy`：深拷贝在 `delete parser` 后仍可读，进程正常退出。
 - `ASAN=1 bash test/run.sh s6_borrow_uaf`：`delete` 后读 borrow 视图，ASan 报 `heap-use-after-free`，进程 abort。
 - 泄漏检测：macOS 的 ASan 默认不带 LeakSanitizer，**未做泄漏量化**；只验证了无崩溃/无 UAF。
+  该环境缺口、真实网络分片缺口、`ct`/`ct-ast` 等价性登记与并发契约统一记在
+  [S9-allocator](S9-allocator.md) §5；`ct`/`ct-ast` 等价性**不计入**门禁通过数。
 
 ### E-6 零警告
 

@@ -9,7 +9,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 (`ct --version`). Package version: 0.8.1.
+Requires CT v0.53.0 (`ct --version`). Package version: 0.9.0.
 
 ## Layout
 
@@ -17,7 +17,7 @@ Requires CT v0.53.0 (`ct --version`). Package version: 0.8.1.
 ct.pkg                 package manifest
 sse/sse.h.ct           namespace sse; public types + methods + Drop
 test/run.sh            build/run one fixture, diff expected output
-test/fixtures/*.ct     behavior locks (s1 ... s7)
+test/fixtures/*.ct     behavior locks (s1 ... s9)
 docs/                  proposal, requirements, S0 contract, reviews
 ```
 
@@ -47,6 +47,11 @@ int main(void)
     return 0;
 }
 ```
+
+`delete p` runs `Drop` and then frees the struct with the compiler-emitted
+`free`. `sse_parser_free(p)` does the same work inside the package's internal
+allocation funnel; use it when allocations are counted or replaced. Never call
+both on the same parser.
 
 Build a program that imports the package:
 
@@ -82,6 +87,7 @@ meaning). Everything else in `sse/sse.h.ct` is private.
 | Symbol | Meaning |
 | --- | --- |
 | `SseParser *sse_parser_new(void)` | allocate a parser; `0` on OOM |
+| `void sse_parser_free(SseParser *p)` | destroy inside the allocation funnel; do not mix with `delete` |
 | `SseEvent *sse_event_copy(SseEvent *ev)` | deep copy of a borrow view; `0` on OOM |
 | `void sse_event_free(SseEvent *ev)` | free a copy (never a view) |
 | `ev->has_id()`, `ev->has_retry()`, `ev->is_message()` | field predicates |
@@ -172,6 +178,36 @@ containing NUL) are ignored and do **not** set an error.
 6. After `delete parser`, every uncopied view pointer is dangling.
 7. `sse_event_free` accepts only the result of `sse_event_copy`.
 
+### Threading
+
+- One parser must not be `feed`/`finish`/`reset`/freed from several threads at
+  once. There are no locks or atomics inside the package.
+- The event callback runs synchronously on the thread that called `feed`.
+- Replacing the allocator hooks is a process-wide action; do it before any
+  concurrent use.
+
+### Testing limits
+
+The fixtures do not prove leak freedom. What is and is not established:
+
+- **Exit-reachable memory: not checked (environment gap).** macOS ASan reports
+  `detect_leaks is not supported on this platform`, so LeakSanitizer is absent.
+  The gap is memory still reachable at exit. A Linux CI run with
+  `ASAN_OPTIONS=detect_leaks=1` (clang/gcc ASan) is required. Counter results
+  below mean "no whole-buffer release is missing", never "leaks verified".
+- **Real network fragmentation: not checked (environment gap).** Fixtures cover
+  whole-block, byte-by-byte, and fixed-seed pseudo-random 1..7 byte chunks.
+  Those break points are chosen by this repository; real TCP break points
+  cannot be enumerated.
+- **`ct` vs `ct-ast` equivalence: unproven, not a passing gate.** Every golden
+  was produced by `ct` v0.53.0; `ct-ast` is not exercised, so the two frontends
+  are not shown to agree.
+- **Concurrency: unsupported by contract**, as stated in "Threading" above,
+  not an untested item.
+
+Details and raw output: [docs/reviews/S9-allocator.md](docs/reviews/S9-allocator.md).
+
+
 ## CT v0.53.0-specific notes
 
 These are language facts, not preferences (probes in `docs/reviews/S0-facts.md`):
@@ -205,6 +241,7 @@ These are language facts, not preferences (probes in `docs/reviews/S0-facts.md`)
 $ bash test/run.sh s1_construct
 $ bash test/run.sh s2_basic
 $ bash test/run.sh s3_fields
+$ bash test/run.sh s3_retry_zero
 $ bash test/run.sh s4_chunk
 $ bash test/run.sh s5_limits
 $ bash test/run.sh s5_abort
@@ -213,6 +250,8 @@ $ ASAN=1 bash test/run.sh s6_copy
 $ ASAN=1 bash test/run.sh s6_borrow_uaf
 $ bash test/run.sh s7_integration
 $ bash test/run.sh s8_registry
+$ bash test/run.sh s9_oom
+$ bash test/run.sh s9_alloc_count
 ```
 
 Every fixture is built with `-Wall -Wextra -Werror`; the runner fails on any

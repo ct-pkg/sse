@@ -6,6 +6,57 @@ namespace sse;
 #include <string.h>
 
 /*
+ * Allocation funnel. Every heap operation goes through two internal function
+ * pointers, defaulting to malloc/free. A test harness can swap in a failing
+ * allocator through sse_test_alloc_hook(): that function is not `pub`, so it
+ * is absent from the generated header, and --lib builds emit it as static.
+ * The failure count lives in the test stub, not here; production never
+ * installs a stub and never runs test code.
+ */
+typedef void *(*SseAllocFn)(size_t);
+typedef void (*SseFreeFn)(void *);
+
+static void *sse_default_alloc(size_t n)
+{
+    return malloc(n);
+}
+
+static void sse_default_free(void *p)
+{
+    free(p);
+}
+
+static SseAllocFn *sse_alloc_slot(void)
+{
+    static SseAllocFn fn = sse_default_alloc;
+    return &fn;
+}
+
+static SseFreeFn *sse_free_slot(void)
+{
+    static SseFreeFn fn = sse_default_free;
+    return &fn;
+}
+
+static void *sse_mem_alloc(size_t n)
+{
+    return (*sse_alloc_slot())(n);
+}
+
+static void sse_mem_free(void *p)
+{
+    if (p == 0) return;
+    (*sse_free_slot())(p);
+}
+
+/* Test-only injection point; see the comment above. */
+void sse_test_alloc_hook(SseAllocFn alloc_fn, SseFreeFn free_fn)
+{
+    if (alloc_fn != 0) *sse_alloc_slot() = alloc_fn;
+    if (free_fn != 0) *sse_free_slot() = free_fn;
+}
+
+/*
  * SseEvent is a borrow view owned by the parser. Its fields stay valid until
  * the callback returns, and no longer than the next feed / finish / reset /
  * delete on the same parser. To keep an event, use sse_event_copy().
@@ -157,8 +208,12 @@ static int sse_reserve(char **buf, int *cap, int need)
     if (need <= *cap) return 0;
     nc = *cap > 0 ? *cap : 32;
     while (nc < need) nc = nc * 2;
-    nb = realloc(*buf, (size_t)nc);
+    nb = sse_mem_alloc((size_t)nc);
     if (nb == 0) return -1;
+    if (*buf != 0 && *cap > 0) {
+        memcpy(nb, *buf, (size_t)*cap);
+        sse_mem_free(*buf);
+    }
     *buf = nb;
     *cap = nc;
     return 0;
@@ -496,22 +551,43 @@ impl SseParser {
     }
 }
 
+static void sse_release_buffers(SseParser *p)
+{
+    sse_mem_free(p->line_buf);
+    sse_mem_free(p->data_buf);
+    sse_mem_free(p->event_buf);
+    sse_mem_free(p->id_buf);
+    p->line_buf = 0;
+    p->data_buf = 0;
+    p->event_buf = 0;
+    p->id_buf = 0;
+}
+
 impl Drop for SseParser {
     void drop() {
-        free(self->line_buf);
-        free(self->data_buf);
-        free(self->event_buf);
-        free(self->id_buf);
-        self->line_buf = 0;
-        self->data_buf = 0;
-        self->event_buf = 0;
-        self->id_buf = 0;
+        sse_release_buffers(self);
     }
 }
 
 pub SseParser *sse_parser_new(void)
 {
-    return calloc(1, sizeof(SseParser));
+    SseParser *p = sse_mem_alloc(sizeof(SseParser));
+    if (p == 0) return 0;
+    memset(p, 0, sizeof(SseParser));
+    return p;
+}
+
+/*
+ * Destruction that stays inside the allocation funnel. `delete p` also runs
+ * Drop, but its final free is emitted by the compiler and therefore bypasses
+ * the internal free pointer; use this function when allocations are being
+ * counted or replaced.
+ */
+pub void sse_parser_free(SseParser *p)
+{
+    if (p == 0) return;
+    sse_release_buffers(p);
+    sse_mem_free(p);
 }
 
 static char *sse_dup_str(char *s)
@@ -521,7 +597,7 @@ static char *sse_dup_str(char *s)
 
     if (s == 0) return 0;
     n = (int)strlen(s);
-    r = malloc((size_t)n + 1);
+    r = sse_mem_alloc((size_t)n + 1);
     if (r == 0) return 0;
     memcpy(r, s, (size_t)n + 1);
     return r;
@@ -530,10 +606,10 @@ static char *sse_dup_str(char *s)
 pub void sse_event_free(SseEvent *ev)
 {
     if (ev == 0) return;
-    free(ev->event);
-    free(ev->data);
-    free(ev->id);
-    free(ev);
+    sse_mem_free(ev->event);
+    sse_mem_free(ev->data);
+    sse_mem_free(ev->id);
+    sse_mem_free(ev);
 }
 
 pub SseEvent *sse_event_copy(SseEvent *ev)
@@ -541,8 +617,9 @@ pub SseEvent *sse_event_copy(SseEvent *ev)
     SseEvent *cp;
 
     if (ev == 0) return 0;
-    cp = calloc(1, sizeof(SseEvent));
+    cp = sse_mem_alloc(sizeof(SseEvent));
     if (cp == 0) return 0;
+    memset(cp, 0, sizeof(SseEvent));
 
     cp->event = sse_dup_str(ev->event);
     if (ev->event != 0 && cp->event == 0) {
@@ -551,7 +628,7 @@ pub SseEvent *sse_event_copy(SseEvent *ev)
     }
     cp->data_len = ev->data_len;
     if (ev->data != 0) {
-        cp->data = malloc((size_t)ev->data_len + 1);
+        cp->data = sse_mem_alloc((size_t)ev->data_len + 1);
         if (cp->data == 0) {
             sse_event_free(cp);
             return 0;
