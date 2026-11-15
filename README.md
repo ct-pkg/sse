@@ -9,7 +9,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 (`ct --version`). Package version: 0.9.0.
+Requires CT v0.53.0 (`ct --version`). Package version: 0.10.0.
 
 ## Layout
 
@@ -96,6 +96,7 @@ meaning). Everything else in `sse/sse.h.ct` is private.
 | `p->feed(chunk, len)` | bytes in; returns events fired this call, or `-1` |
 | `p->finish()` | mark EOF and discard pending bytes per WHATWG |
 | `p->has_error()`, `p->error_msg()` | terminal error state / text |
+| `p->error_code()` | `0` none, `1` protocol/limit, `2` OOM, `3` callback aborted, `4` reentrant call, `5` finished |
 | `p->last_event_id()` | persistent last event id, `0` when cleared |
 | `p->has_retry()` | 1 once a legal `retry` field was seen, `0` otherwise |
 | `p->retry_hint()` | persistent retry hint; only meaningful when `has_retry()` is 1 |
@@ -122,7 +123,7 @@ and across `reset()`.
 - Any fatal condition returns `-1`, sets `has_error()`, and enters a terminal
   state: later `feed`/`finish` answer `-1` until `reset()`.
 - A callback returning non-zero aborts the feed (`error_msg()` is
-  `callback aborted`); bytes after the abort are not parsed.
+  `callback aborted`, code `3`); bytes after the abort are not parsed.
 - `finish()` is WHATWG EOF: pending lines and pending data are **discarded**,
   never dispatched. `feed` after `finish` answers `-1` (`parser finished`).
 - `reset()` clears buffers/errors/finished and re-arms BOM handling; it keeps
@@ -140,12 +141,13 @@ and across `reset()`.
 
 ### Errors
 
-| Condition | `error_msg()` |
-| --- | --- |
-| line exceeds the limit | `SSE line exceeds <n> bytes` |
-| allocation failure | `out of memory` |
-| callback returned non-zero | `callback aborted` |
-| `feed` after `finish` | `parser finished` |
+| Condition | code | `error_msg()` |
+| --- | --- | --- |
+| line exceeds the limit | 1 | `SSE line exceeds <n> bytes` |
+| allocation failure | 2 | `out of memory` |
+| callback returned non-zero | 3 | `callback aborted` |
+| mutating call from inside the callback | 4 | `reentrant call is not allowed` |
+| `feed` after `finish` | 5 | `parser finished` |
 
 Protocol-level oddities (unknown fields, invalid `retry`, comments, an `id`
 containing NUL) are ignored and do **not** set an error.
@@ -177,6 +179,11 @@ containing NUL) are ignored and do **not** set an error.
 5. `ud` belongs to the caller; the parser only borrows it.
 6. After `delete parser`, every uncopied view pointer is dangling.
 7. `sse_event_free` accepts only the result of `sse_event_copy`.
+8. Inside the event callback, do not call `feed` / `finish` / `reset` /
+   `sse_parser_free` / `on_event` / `max_line_bytes` on the same parser. Such
+   calls are rejected with error code `4` (`reentrant call is not allowed`);
+   the parser stays usable after `reset()`. Return non-zero from the callback
+   to stop early (code `3`, `callback aborted`).
 
 ### Threading
 
@@ -276,6 +283,7 @@ $ bash test/run.sh s8_registry
 $ bash test/run.sh s9_oom
 $ bash test/run.sh s9_alloc_count
 $ bash test/run.sh s9_finish_clean
+$ bash test/run.sh s10_reentrant
 ```
 
 Every fixture is built with `-Wall -Wextra -Werror`; the runner fails on any

@@ -69,6 +69,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | `int SseParser.finish()` | 见 §4 F-2 |
 | `int SseParser.has_error()` | 0/1 |
 | `char *SseParser.error_msg()` | 无错误返回 0；有错误返回稳定文本 |
+| `int SseParser.error_code()` | 0 无错误、1 协议/上限、2 OOM、3 回调中止、4 重入、5 已 finish |
 | `char *SseParser.last_event_id()` | 无则 0，否则返回内部持久缓冲（生命周期同 parser） |
 | `int SseParser.has_retry()` | 本流是否已收到合法 `retry` 字段；0/1 |
 | `int SseParser.retry_hint()` | 仅当 `has_retry() == 1` 时有意义；未设置时返回值不构成契约 |
@@ -89,7 +90,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 2. 成功 → 返回**本次调用**触发的事件回调次数（`>= 0`）。
 3. 致命（行超限 / OOM / 回调中断 / 已 `finish` / 已处于错误态）→ 返回 `-1`，`has_error()==1`，进入终止态。
 4. 终止态下再次 `feed`/`finish` 立即返回 `-1`，不再解析；唯一出口是 `reset()`。
-5. 回调返回非 0 → 中断：本块剩余字节不再解析，`error_msg()` 为 `callback aborted`。
+5. 回调返回非 0 → 中断：本块剩余字节不再解析，`error_msg()` 为 `callback aborted`（码 3）。
 6. 事件计数只统计**本次**调用内成功分发的事件；中断前已分发的事件照常计数（但整体返回 -1）。
 
 ### F-2 `finish()`
@@ -117,6 +118,17 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 1. 同一个 parser 不得被多线程同时 `feed` / `finish` / `reset` / `sse_parser_free`。
 2. 回调在调用 `feed` 的线程上**同步**触发；包内无锁、无原子操作。
 3. 替换 alloc/free 指针是进程级操作，必须在并发使用前完成。
+
+### C-2 回调内禁止重入（第 15 题裁定）
+
+1. 进入事件回调前置 `in_callback`，回调返回后清位；该检查在**生产构建**中同样生效，成本是一个布尔判断。
+2. 回调执行期间，不得对同一 parser 调用 `feed` / `finish` / `reset` / `sse_parser_free` / `on_event` / `max_line_bytes`：
+   - 返回 `int` 的方法返回 -1 并置错误；`reset` 与 `sse_parser_free` 只置错误、不执行动作。
+   - 错误码 `4`，文案 `reentrant call is not allowed`。
+3. 唯一允许的提前终止方式是回调返回非 0：`feed` 返回 -1，错误码 `3`，文案 `callback aborted`。
+4. 终止后 `reset()` 可复用 parser（禁止重入不等于禁止终止后复用）。
+5. 不做重入支持的理由：回调期间半解析状态被外部改写需要复制或排队，与「纯协议解析器」的定位不符；
+   停止的需求已由返回值覆盖。
 
 ### A-2 可观测性边界（第 12 题裁定）
 
@@ -195,6 +207,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | S8 | 值返回注册表 + `s8_registry` 夹具 | `bash test/run.sh s8_registry` | `feat(sse): S8 值返回注册表` | M | 是 |
 | S9 | 分配器注入、OOM/计数夹具 | `bash test/run.sh s9_oom`；`bash test/run.sh s9_alloc_count`；`bash test/run.sh s9_finish_clean` | `feat(sse): S9 分配器注入与计数` | M | 是 |
 | I-1 | ct-http 真实链路（独立集成门禁，不并入单包门禁） | `bash test/integration.sh` | `test(sse): I-1 ct-http 真实对接` | M | 是 |
+| S10 | 回调内重入拒绝 + `s10_reentrant` | `bash test/run.sh s10_reentrant` | `feat(sse): S10 回调重入保护` | M | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -219,6 +232,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../reviews/S9-allocator.md) §5 人工核对 |
 | E-16 | `finish()` 清理由计数快照（前后不增、销毁后归零）与行为断言共同证明；不加只读接口，块内残留长度登记为不可观测 | `bash test/run.sh s9_finish_clean`、[S9-allocator](../reviews/S9-allocator.md) §6 |
 | E-17 | 真实 ct-http 发布版的 chunk 能驱动 `feed`：BOM 分片、data 跨 chunk、多行 data、id/retry 持久与空 id 清除、空行分发、EOF 丢弃 pending data | `bash test/integration.sh`、[S13-http-integration](../reviews/S13-http-integration.md) |
+| E-18 | 回调内 `feed` / `reset` / `sse_parser_free` 各被拒绝（code 4、文案含 reentrant），之后 `reset` + `feed` 仍可用；回调返回非 0 → code 3，`reset` 后可复用 | `bash test/run.sh s10_reentrant` |
 
 ## 7 非目标
 
@@ -237,3 +251,4 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../reviews/S9-allocator.md) §5、E-15 |
 | 2026-11-15 | 第 12 题：不加只读视察接口；`finish()` 清理由计数快照与行为断言证明，块内残留长度登记为不可观测 | `s9_finish_clean`、A-2、E-16 |
 | 2026-11-15 | 第 13 题：真实 ct-http 0.1.0（`ct get` 发布版）→ `sse_parser` 链路跑通；`-I vendor/http` 为包根绕法，待 `ct install` 修复后回退 | [S13-http-integration](../reviews/S13-http-integration.md)、I-1、E-17 |
+| 2026-11-15 | 第 15 题：回调内禁止重入（生产构建同样检查），错误码 4；新增 `error_code()`；终止后 reset 可复用 | `s10_reentrant`、C-2、E-18 |

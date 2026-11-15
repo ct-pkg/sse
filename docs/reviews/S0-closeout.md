@@ -87,7 +87,7 @@ sse_sse_event_copy
 sse_sse_event_free
 sse_SseEvent_has_id / has_retry / is_message
 sse_SseParser_on_event / max_line_bytes / feed / finish
-sse_SseParser_has_error / error_msg / last_event_id / has_retry / retry_hint / reset
+sse_SseParser_has_error / error_msg / error_code / last_event_id / has_retry / retry_hint / reset
 ```
 
 与卡 §3 清单一一对应；无私有 helper 泄漏。
