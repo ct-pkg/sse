@@ -1,0 +1,7 @@
+e1 event=message id=7 has_retry=1 retry=2500 len=5 data=[hello]
+e2 event=tick id=7 has_retry=1 retry=2500 len=3 data=[a\nb]
+e3 event=message id=7 has_retry=1 retry=2500 len=3 data=[xyz]
+e4 event=end id=- has_retry=1 retry=2500 len=3 data=[bye]
+status=200 err=0 bytes=113 events=4
+finish=0
+after=-1

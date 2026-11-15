@@ -1,0 +1,86 @@
+/*
+ * I-1: real path from ct-http chunks to sse_parser events.
+ *
+ * ct-http v0.1.0 (fetched with `ct get`, release tag) performs a POST and
+ * streams the response body through HttpChunkCb(char *data, int len, void *ud).
+ * The callback borrows the bytes for the duration of the call, which is
+ * exactly what feed() needs: it copies into parser-owned buffers. A feed
+ * failure returns non-zero, which aborts the transfer.
+ *
+ * argv[1] is the loopback URL; test/integration.sh starts the server.
+ */
+import http::http;
+import sse::sse;
+
+#include <stdio.h>
+
+static int on_chunk(char *data, int len, void *ud)
+{
+    SseParser *p = ud;
+    int rc = p->feed(data, len);
+    if (rc < 0) return 1;
+    return 0;
+}
+
+static void show(char *s, int len)
+{
+    int i = 0;
+    while (i < len) {
+        if (s[i] == '\n') printf("\\n");
+        else printf("%c", s[i]);
+        i = i + 1;
+    }
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d event=%s id=%s has_retry=%d retry=%d len=%d data=[",
+           *n, ev->event, ev->id != 0 ? ev->id : "-",
+           ev->has_retry(), ev->retry, ev->data_len);
+    show(ev->data, ev->data_len);
+    printf("]\n");
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    SseParser *p;
+    CRequest *req;
+    CResponse *res;
+    int n = 0;
+    int rc;
+
+    if (argc < 2) {
+        printf("usage: i1_http_stream <url>\n");
+        return 2;
+    }
+
+    p = sse::sse_parser_new();
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    req = argv[1]->post();
+    res = req->timeout(5000)->send_stream(on_chunk, p);
+    printf("status=%d err=%d bytes=%d events=%d\n",
+           res->status(), res->error(), res->total_bytes(), n);
+    if (res->error() != 0) {
+        printf("detail=%s\n", res->error_detail());
+        res->free();
+        req->free();
+        sse::sse_parser_free(p);
+        return 1;
+    }
+    res->free();
+    req->free();
+
+    printf("finish=%d\n", p->finish());
+    rc = p->feed("data: late\n\n", 13);
+    printf("after=%d\n", rc);
+    sse::sse_parser_free(p);
+    return 0;
+}

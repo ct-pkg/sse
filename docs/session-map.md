@@ -7,3 +7,4 @@
 | 2026-11-15 | S7 文档与集成示例 | `README.md`、`test/fixtures/s7_integration.*` |
 | 2026-11-15 | S8 值返回注册表与内置类型宿主探针 | `sse/sse.h.ct`（SseRegistry）、`test/fixtures/s8_registry.*`、`docs/reviews/S8-int-host.md` |
 | 2026-11-15 | S9 分配器注入、OOM 与计数门禁登记 | `sse/sse.h.ct`（alloc/free 漏斗、`sse_parser_free`）、`test/fixtures/s9_*`、`docs/reviews/S9-allocator.md` |
+| 2026-11-15 | I-1 ct-http 真实对接（独立集成门禁） | `test/fixtures/i1_http_stream.*`、`test/integration.sh`、`test/integration/i1_server.py`、`docs/reviews/S13-http-integration.md` |

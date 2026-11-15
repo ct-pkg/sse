@@ -194,6 +194,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | S7 | README + 集成样例 + `s7_integration` 夹具 | `bash test/run.sh s7_integration` | `test(sse): S7 示例与文档` | S | 是 |
 | S8 | 值返回注册表 + `s8_registry` 夹具 | `bash test/run.sh s8_registry` | `feat(sse): S8 值返回注册表` | M | 是 |
 | S9 | 分配器注入、OOM/计数夹具 | `bash test/run.sh s9_oom`；`bash test/run.sh s9_alloc_count`；`bash test/run.sh s9_finish_clean` | `feat(sse): S9 分配器注入与计数` | M | 是 |
+| I-1 | ct-http 真实链路（独立集成门禁，不并入单包门禁） | `bash test/integration.sh` | `test(sse): I-1 ct-http 真实对接` | M | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -217,6 +218,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-14 | alloc/free 计数在整块、逐字节、伪随机三种切法下相等且 `live == 0`；文档写明只证明整块缓冲漏释放 | `bash test/run.sh s9_alloc_count` |
 | E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../reviews/S9-allocator.md) §5 人工核对 |
 | E-16 | `finish()` 清理由计数快照（前后不增、销毁后归零）与行为断言共同证明；不加只读接口，块内残留长度登记为不可观测 | `bash test/run.sh s9_finish_clean`、[S9-allocator](../reviews/S9-allocator.md) §6 |
+| E-17 | 真实 ct-http 发布版的 chunk 能驱动 `feed`：BOM 分片、data 跨 chunk、多行 data、id/retry 持久与空 id 清除、空行分发、EOF 丢弃 pending data | `bash test/integration.sh`、[S13-http-integration](../reviews/S13-http-integration.md) |
 
 ## 7 非目标
 
@@ -234,3 +236,4 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 2026-11-15 | 第 6/7 题：新增 S9 分配器注入与 OOM/计数夹具；新增 `sse_parser_free` 作为漏斗内销毁出口；并发边界写成契约 C-1 | [S9-allocator](../reviews/S9-allocator.md)、E-13/E-14 |
 | 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../reviews/S9-allocator.md) §5、E-15 |
 | 2026-11-15 | 第 12 题：不加只读视察接口；`finish()` 清理由计数快照与行为断言证明，块内残留长度登记为不可观测 | `s9_finish_clean`、A-2、E-16 |
+| 2026-11-15 | 第 13 题：真实 ct-http 0.1.0（`ct get` 发布版）→ `sse_parser` 链路跑通；`-I vendor/http` 为包根绕法，待 `ct install` 修复后回退 | [S13-http-integration](../reviews/S13-http-integration.md)、I-1、E-17 |

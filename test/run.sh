@@ -18,6 +18,12 @@ if [ -z "$task" ]; then
     echo "usage: bash test/run.sh <task-id>" >&2
     exit 2
 fi
+case "$task" in
+i1_*)
+    echo "FAIL $task: integration fixture; run bash test/integration.sh" >&2
+    exit 2
+    ;;
+esac
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"

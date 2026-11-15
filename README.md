@@ -186,6 +186,24 @@ containing NUL) are ignored and do **not** set an error.
 - Replacing the allocator hooks is a process-wide action; do it before any
   concurrent use.
 
+### Integration gate
+
+The real ct-http -> parser link is a separate gate, not part of `test/run.sh`:
+
+```console
+$ bash test/integration.sh
+ok i1_http_stream (ct-http 0.1.0, real loopback chunks)
+```
+
+It fetches the released ct-http with `ct get`, starts a loopback SSE origin,
+and feeds the real response chunks into the parser. It needs `ct`, `git`,
+`python3`, a C compiler, and libcurl headers; missing prerequisites exit 2
+(blocked) instead of pretending to pass. The build uses
+`-I vendor/http -I <ct-sse repo>`; the vendor include root is a temporary
+workaround for `ct install`'s include-prefix issue. Details, exact commands, and
+the interface mapping are in
+[docs/reviews/S13-http-integration.md](docs/reviews/S13-http-integration.md).
+
 ### Testing limits
 
 The fixtures do not prove leak freedom. What is and is not established:
