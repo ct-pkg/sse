@@ -1,0 +1,57 @@
+/*
+ * S6: the deep-copy exit. A copy must survive later feeds and delete(), keep
+ * the embedded NUL in data (length-based), and carry event/id/retry.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static SseEvent *snap = 0;
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    if (*n == 1) {
+        snap = sse::sse_event_copy(ev);
+        printf("1 data=[%s] len=%d id=%s retry=%d has_retry=%d\n",
+               ev->data, ev->data_len, ev->id, ev->retry, ev->has_retry());
+    } else if (*n == 2) {
+        printf("2 data=[%s] len=%d snap=[%s] snap_len=%d\n",
+               ev->data, ev->data_len, snap->data, snap->data_len);
+    } else if (*n == 3) {
+        printf("3 len=%d bytes=%d,%d,%d\n", ev->data_len,
+               (int)ev->data[0], (int)ev->data[1], (int)ev->data[2]);
+    } else {
+        printf("4 event=%s\n", ev->event);
+    }
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char nuldata[] = "data: a\0b\n\n";
+    int n = 0;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    p->feed("id: 42\nretry: 1500\ndata: first\n\n", 32);
+    p->feed("data: second\n\n", 14);
+    p->feed(nuldata, (int)sizeof(nuldata) - 1);
+    p->feed("event: ping\ndata: p\n\n", 21);
+
+    delete p;
+
+    printf("after_delete=[%s] id=%s retry=%d\n",
+           snap->data, snap->id, snap->retry);
+    sse::sse_event_free(snap);
+    printf("freed\n");
+    printf("deleted\n");
+    return 0;
+}

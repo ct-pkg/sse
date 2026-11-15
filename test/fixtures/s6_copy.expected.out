@@ -1,0 +1,7 @@
+1 data=[first] len=5 id=42 retry=1500 has_retry=1
+2 data=[second] len=6 snap=[first] snap_len=5
+3 len=3 bytes=97,0,98
+4 event=ping
+after_delete=[first] id=42 retry=1500
+freed
+deleted
