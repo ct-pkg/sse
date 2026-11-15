@@ -1,0 +1,44 @@
+/*
+ * Example: register a constructor, build one parser, parse one event.
+ * Documentation entry point: docs/README.md.
+ */
+import sse::sse;
+
+#include <stdio.h>
+
+static SseParser *make_parser(void)
+{
+    return sse::sse_parser_new();
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+
+    if (ev == 0) return 1;
+    *n = *n + 1;
+    printf("data=[%s]\n", ev->data);
+    return 0;
+}
+
+int main(void)
+{
+    static SseRegistry base;
+    SseRegistry reg = base.reg("parser", make_parser);
+    SseParser *p = reg.make("parser");
+    SseParser *missing;
+    int n = 0;
+
+    if (p == 0) {
+        printf("made=0\n");
+        return 1;
+    }
+    printf("made=1\n");
+    p->on_event(on_ev, &n);
+    p->feed("data: hello\n\n", 13);
+    delete p;
+
+    missing = reg.make("missing");
+    printf("missing=%d err=%d\n", missing != 0, reg.error());
+    return 0;
+}

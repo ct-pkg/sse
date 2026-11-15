@@ -1,0 +1,40 @@
+/*
+ * Example: keep an event past the callback and past the parser.
+ * Documentation entry point: docs/README.md.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static SseEvent *g_saved = 0;
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    if (ev == 0) return 1;
+    if (ud == 0) return 1;
+    g_saved = sse::sse_event_copy(ev);
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, p);
+    p->feed("data: hello\n\n", 13);
+    delete p;
+
+    if (g_saved == 0) {
+        printf("saved=0\n");
+        return 1;
+    }
+    printf("saved=[%s] len=%d\n", g_saved->data, g_saved->data_len);
+    sse::sse_event_free(g_saved);
+    printf("deleted\n");
+    return 0;
+}

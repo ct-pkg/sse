@@ -2,7 +2,7 @@
 
 > 定位：五层产物中的**第四层**。写片序、依赖、验收判据、版本落点；不写需求口径
 > （[需求定稿](../requirements.md)），不重复评估（[evaluation](../reviews/evaluation.md)）。
-> 日期：2026-11-15。当前包版本 **0.10.0**。语言基线 CT v0.53.0。
+> 日期：2026-11-15。当前包版本 **0.11.0**。语言基线 CT v0.53.0。
 
 ## 1 现在到哪了
 
@@ -33,7 +33,7 @@
 | PH-08 | 值返回注册表（含 0.8.1 retry 修正） | 8 | 已收口（回溯卡） | PH-07 | `bash test/run.sh s8_registry` 退出 0 |
 | PH-09 | 分配器注入、OOM、计数、finish 可观测性、I-1 | 9 | 已收口（回溯卡） | PH-08 | `s9_oom`、`s9_alloc_count`、`s9_finish_clean`、`s9_error_codes` 退出 0；`test/integration.sh` 0 |
 | PH-10 | 回调重入拒绝 | 10 | 已收口（回溯卡） | PH-09 | `bash test/run.sh s10_reentrant`；`s10_reentrant_state` 退出 0 |
-| PH-11 | 文档与示例收尾 | 11 | 未开工 | PH-10 | 见 §3.1 |
+| PH-11 | 文档与示例收尾 | 11 | 已收口 | PH-10 | 见 §3.1；`check_links`/`check_api` 退出 0，三个示例退出 0 |
 | PH-12 | 诊断格式落地后替换门禁读文本 | 12 | 阻塞（CT 能力） | PH-11；CT 结构化诊断 | 见 §3.2 |
 | PH-13 | Linux CI 补 LSan | 13 | 阻塞（CI 环境） | PH-11；Linux runner | 见 §3.3 |
 | PH-14 | ct-http 若含 SSE 逻辑的下沉跟进 | 14 | 条件未触发（当前无项） | PH-11；ct-http 变更 | 见 §3.4 |
@@ -103,8 +103,8 @@
 
 | 项 | 口径 |
 | --- | --- |
-| 当前版本 | `0.10.0`（PH-10 收口） |
-| 下一版 | `0.11.0`（PH-11 收口；MINOR 与 PH 编号一一对应） |
+| 当前版本 | `0.11.0`（PH-11 收口） |
+| 下一版 | `0.12.0`（PH-12 收口；MINOR 与 PH 编号一一对应） |
 | 历史 PATCH | `0.8.1` 是 PH-08 窗口内的 fix（第 4 题 retry 查询拆分），不另立 phase |
 | 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH |
 | 发版前置 | 全部单包夹具绿；集成门禁绿；零警告；API 与 S0 卡 §3 一致；CHANGELOG 完整 |
@@ -145,7 +145,7 @@
 $ for t in s1_construct s2_basic s2_syntax s3_fields s3_retry_zero s3_state \
     s4_chunk s4_bom_edge s5_limits s5_abort s6_copy s6_finish_eof s7_integration \
     s8_registry s9_oom s9_alloc_count s9_finish_clean s9_error_codes \
-    s10_reentrant s10_reentrant_state; do
+    s10_reentrant s10_reentrant_state ex_registry ex_copy ex_error_codes; do
     bash test/run.sh "$t" || exit 1
   done
 ```

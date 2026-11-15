@@ -14,7 +14,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 (`ct --version`). Package version: 0.10.0.
+Requires CT v0.53.0 (`ct --version`). Package version: 0.11.0.
 
 ## Layout
 
@@ -69,9 +69,16 @@ $ ct build app.ct -I /path/to/ct-sse -o app --cflags "-Wall -Wextra -Werror"
 ```ct
 static SseRegistry base;
 
+/* A namespaced function cannot be passed as a value (`sse::sse_parser_new`
+ * is rejected: "no variable of that name in that namespace"). Wrap it. */
+static SseParser *make_parser(void)
+{
+    return sse::sse_parser_new();
+}
+
 int main(void)
 {
-    SseRegistry reg = base.reg("parser", sse_parser_new);
+    SseRegistry reg = base.reg("parser", make_parser);
     SseParser *p = reg.make("parser");
     if (p == 0) { /* reg.error() == 1: no such key */ }
     delete p;

@@ -1,7 +1,7 @@
 # S0 契约卡（冻结）
 
 > 项目：ct-sse（WHATWG SSE 解析包）。规范版本：1.10.0。冻结时间：2026-11-15。
-> 依据：[S0 事实核对](../reviews/S0-facts.md)、[S0 battle](../reviews/S0-battle.md)。
+> 依据：[S0 事实核对](../../reviews/S0-facts.md)、[S0 battle](../../reviews/S0-battle.md)。
 > 冻结规则：本卡 §2–§4 自 S1 首个实现提交起不得修改；确需变更时关闭当前相、新开一相。
 > 版本映射：`S<n>` 收口 → `0.<n>.0`；S0 只冻结契约，不移动版本。
 
@@ -229,9 +229,9 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-12 | `max_line_bytes(n)` 的 `n` 是内容字节上限：恰好 `n` 字节通过、`n+1` 字节报错（以 `n=4096` 写死） | `bash test/run.sh s5_limits` |
 | E-13 | 四处 OOM 注入（parser / 行缓冲 / data 缓冲 / `sse_event_copy`）分别断言失败返回值、`has_error()` 与 `out of memory` | `bash test/run.sh s9_oom` |
 | E-14 | alloc/free 计数在整块、逐字节、伪随机三种切法下相等且 `live == 0`；文档写明只证明整块缓冲漏释放 | `bash test/run.sh s9_alloc_count` |
-| E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../reviews/S9-allocator.md) §5 人工核对 |
-| E-16 | `finish()` 清理由计数快照（前后不增、销毁后归零）与行为断言共同证明；不加只读接口，块内残留长度登记为不可观测 | `bash test/run.sh s9_finish_clean`、[S9-allocator](../reviews/S9-allocator.md) §6 |
-| E-17 | 真实 ct-http 发布版的 chunk 能驱动 `feed`：BOM 分片、data 跨 chunk、多行 data、id/retry 持久与空 id 清除、空行分发、EOF 丢弃 pending data | `bash test/integration.sh`、[S13-http-integration](../reviews/S13-http-integration.md) |
+| E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../../reviews/S9-allocator.md) §5 人工核对 |
+| E-16 | `finish()` 清理由计数快照（前后不增、销毁后归零）与行为断言共同证明；不加只读接口，块内残留长度登记为不可观测 | `bash test/run.sh s9_finish_clean`、[S9-allocator](../../reviews/S9-allocator.md) §6 |
+| E-17 | 真实 ct-http 发布版的 chunk 能驱动 `feed`：BOM 分片、data 跨 chunk、多行 data、id/retry 持久与空 id 清除、空行分发、EOF 丢弃 pending data | `bash test/integration.sh`、[S13-http-integration](../../reviews/S13-http-integration.md) |
 | E-18 | 回调内 `feed` / `reset` / `sse_parser_free` 各被拒绝（code 4、文案含 reentrant），之后 `reset` + `feed` 仍可用；回调返回非 0 → code 3，`reset` 后可复用 | `bash test/run.sh s10_reentrant` |
 
 ## 7 非目标
@@ -244,26 +244,26 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | --- | --- | --- |
 | 2026-11-15 | 首版冻结；相对提案修正 WHATWG W10、retry 0 值、静态工厂、行上限、分期 | S0-facts、S0-battle |
 | 2026-11-15 | S6/S7 重切：原 S6（reset/finish）的行为已在 S1/S4/S5 落地，无独立红证可出；copy/free 移到 S6，README/集成样例移到 S7 | T-7 红证要求；E-5 需 copy 夹具 |
-| 2026-11-15 | 新增 S8：负责人指定「注册表方法返回宿主自身」形态；实测 struct 按值返回可用，int 宿主无法承载注册表状态，故用 struct 宿主，保留 `sse_parser_new` 作为构造器函数值 | [S8-int-host](../reviews/S8-int-host.md)、`s8_registry` |
+| 2026-11-15 | 新增 S8：负责人指定「注册表方法返回宿主自身」形态；实测 struct 按值返回可用，int 宿主无法承载注册表状态，故用 struct 宿主，保留 `sse_parser_new` 作为构造器函数值 | [S8-int-host](../../reviews/S8-int-host.md)、`s8_registry` |
 | 2026-11-15 | 第 4 题裁定：parser 的 retry 拆为 `has_retry()` + `retry_hint()`；`retry: 0` 为已设置；未设置时 hint 返回值不构成契约 | `s3_retry_zero`、R-2 |
 | 2026-11-15 | 第 5 题裁定：`max_line_bytes(n)` 的 `n` 是内容字节上限（非含 NUL 容量）；恰好 `n` 合法、`n+1` 报错，判据以 `n=4096` 写死 | `s5_limits`、E-12 |
-| 2026-11-15 | 第 6/7 题：新增 S9 分配器注入与 OOM/计数夹具；新增 `sse_parser_free` 作为漏斗内销毁出口；并发边界写成契约 C-1 | [S9-allocator](../reviews/S9-allocator.md)、E-13/E-14 |
-| 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../reviews/S9-allocator.md) §5、E-15 |
+| 2026-11-15 | 第 6/7 题：新增 S9 分配器注入与 OOM/计数夹具；新增 `sse_parser_free` 作为漏斗内销毁出口；并发边界写成契约 C-1 | [S9-allocator](../../reviews/S9-allocator.md)、E-13/E-14 |
+| 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../../reviews/S9-allocator.md) §5、E-15 |
 | 2026-11-15 | 第 12 题：不加只读视察接口；`finish()` 清理由计数快照与行为断言证明，块内残留长度登记为不可观测 | `s9_finish_clean`、A-2、E-16 |
-| 2026-11-15 | 第 13 题：真实 ct-http 0.1.0（`ct get` 发布版）→ `sse_parser` 链路跑通；`-I vendor/http` 为包根绕法，待 `ct install` 修复后回退 | [S13-http-integration](../reviews/S13-http-integration.md)、I-1、E-17 |
+| 2026-11-15 | 第 13 题：真实 ct-http 0.1.0（`ct get` 发布版）→ `sse_parser` 链路跑通；`-I vendor/http` 为包根绕法，待 `ct install` 修复后回退 | [S13-http-integration](../../reviews/S13-http-integration.md)、I-1、E-17 |
 | 2026-11-15 | 第 15 题：回调内禁止重入（生产构建同样检查），错误码 4；新增 `error_code()`；终止后 reset 可复用 | `s10_reentrant`、C-2、E-18 |
-| 2026-11-15 | 第 14 题：新增 `s2_syntax`、`s3_state`、`s4_bom_edge`、`s9_error_codes`、`s10_reentrant_state`，补强 `s8_registry`；无独立用例项见 §9 | [S14-coverage](../reviews/S14-coverage.md) |
+| 2026-11-15 | 第 14 题：新增 `s2_syntax`、`s3_state`、`s4_bom_edge`、`s9_error_codes`、`s10_reentrant_state`，补强 `s8_registry`；无独立用例项见 §9 | [S14-coverage](../../reviews/S14-coverage.md) |
 
 ## 9 覆盖标注（附录，不改变 §2–§4 的任何口径）
 
-> 依据：[S14-coverage](../reviews/S14-coverage.md) 的两席 battle。下列条目**没有独立夹具**，
+> 依据：[S14-coverage](../../reviews/S14-coverage.md) 的两席 battle。下列条目**没有独立夹具**，
 > 不得写成「已覆盖」。它们要么不可观测，要么构造即 UB/编译期限制，要么证据形态是命令而非夹具。
 
 | # | 条目 | 标注 | 理由 |
 | --- | --- | --- | --- |
 | 9-1 | `reset()` 清 `saw_cr` | 无独立用例 | 清与不清只差一个被吞掉的空行，空行不分发；无可观察差异 |
 | 9-2 | `reset()` 保留缓冲容量 | 无独立用例 | A-2 不提供只读接口；计数器只看分配块大小 |
-| 9-3 | 分配钩子不进生成头/公开 ABI | 无独立用例 | 证据是 `grep`/`nm` 命令（[S9](S9-allocator.md) §1），不是运行期夹具 |
+| 9-3 | 分配钩子不进生成头/公开 ABI | 无独立用例 | 证据是 `grep`/`nm` 命令（[S9](../../reviews/S9-allocator.md) §1），不是运行期夹具 |
 | 9-4 | `sse_parser_free` 不与 `delete` 并用；回调不得 free 字段；`sse_event_free` 只接受 copy | 无独立用例 | 误用即 UB，用例只能验证崩溃，不能定义行为 |
 | 9-5 | 块内残留长度（`line_len`/`data_len`/`event_len`） | 无独立用例 | 第 12 题裁定不加只读接口；只由计数快照与行为断言覆盖 |
 | 9-6 | 同一 parser 不得多线程并发 | 无独立用例 | 契约而非未测（C-1）；单线程夹具证明不了「不得」 |

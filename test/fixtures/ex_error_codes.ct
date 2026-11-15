@@ -1,0 +1,43 @@
+/*
+ * Example: branch on error_code() for limit, finished and callback abort.
+ * Documentation entry point: docs/README.md.
+ */
+import sse::sse;
+
+#include <stdio.h>
+
+static int cb_abort(SseEvent *ev, void *ud)
+{
+    if (ev == 0) return 1;
+    if (ud == 0) return 1;
+    return 1;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+
+    p->max_line_bytes(4);
+    p->feed("12345\n\n", 8);
+    printf("limit code=%d\n", p->error_code());
+
+    p->max_line_bytes(65536);
+    p->reset();
+    p->finish();
+    p->feed("data: x\n\n", 9);
+    printf("finished code=%d\n", p->error_code());
+
+    p->reset();
+    p->on_event(cb_abort, 0);
+    p->feed("data: x\n\n", 9);
+    printf("abort code=%d\n", p->error_code());
+
+    sse::sse_parser_free(p);
+    printf("deleted\n");
+    return 0;
+}

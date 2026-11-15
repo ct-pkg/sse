@@ -1,0 +1,26 @@
+# Frozen public API surface (S0 card §3).
+# Generated header for a real consumer must export exactly this set.
+sse_SseParser_Drop_drop
+sse_sse_parser_new
+sse_sse_parser_free
+sse_sse_event_free
+sse_sse_event_copy
+sse_SseEvent_has_id
+sse_SseEvent_has_retry
+sse_SseEvent_is_message
+sse_SseRegistry_init
+sse_SseRegistry_reg
+sse_SseRegistry_make
+sse_SseRegistry_error
+sse_SseRegistry_size
+sse_SseParser_on_event
+sse_SseParser_max_line_bytes
+sse_SseParser_feed
+sse_SseParser_finish
+sse_SseParser_has_error
+sse_SseParser_error_msg
+sse_SseParser_error_code
+sse_SseParser_last_event_id
+sse_SseParser_has_retry
+sse_SseParser_retry_hint
+sse_SseParser_reset
