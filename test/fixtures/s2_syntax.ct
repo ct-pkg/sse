@@ -1,0 +1,71 @@
+/*
+ * S2 (coverage gap): field-line syntax details that can silently produce a
+ * wrong event when broken.
+ *
+ *   :data: x        comment with a colon inside: ignored, no event
+ *   data:  x        exactly one leading space is removed -> " x"
+ *   data: a:b:c     split at the FIRST colon -> "a:b:c"
+ *   data            no colon = field with an empty value -> empty event
+ *   Data: x         field names are case-sensitive -> ignored
+ *   foo: bar        unknown field -> ignored
+ *   data: a
+ *   data:           only one trailing LF is removed -> "a\n"
+ *
+ * Every line above is a contract detail from the S0 card (W2/W3/W4); this
+ * fixture is the direct evidence for them. See docs/reviews/S14-coverage.md.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static void show(char *s, int len)
+{
+    int i = 0;
+
+    while (i < len) {
+        if (s[i] == '\n') printf("\\n");
+        else printf("%c", s[i]);
+        i = i + 1;
+    }
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d len=%d data=[", *n, ev->data_len);
+    show(ev->data, ev->data_len);
+    printf("]\n");
+    return 0;
+}
+
+static int feed_str(SseParser *p, char *s)
+{
+    return p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int n = 0;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    printf("comment_colon=%d\n", feed_str(p, ":data: x\n\n"));
+    feed_str(p, "data:  x\n\n");
+    feed_str(p, "data: a:b:c\n\n");
+    feed_str(p, "data\n\n");
+    printf("case_sensitive=%d\n", feed_str(p, "Data: x\n\n"));
+    printf("unknown_field=%d\n", feed_str(p, "foo: bar\n\n"));
+    feed_str(p, "data: a\ndata:\n\n");
+
+    printf("n=%d err=%d\n", n, p->has_error());
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

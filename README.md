@@ -5,6 +5,11 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
 - Parses the event-stream format (HTML §9.2.6), including the stream-initial BOM.
 - Does **not** do HTTP, LLM protocol semantics, reconnect policy, or routing.
 - Depends only on `<stdlib.h>` / `<string.h>` / `<stdarg.h>` / `<stdio.h>`.
+- Dependency direction: `ct-llm-sse → ct-sse → ct-http` (arrow = "depends on").
+  ct-http must not depend on ct-sse; ct-sse must not depend on ct-llm-sse.
+  The parser unit itself takes `char * + len`, so it has no compile-time HTTP
+  import; the integration gate still consumes ct-http, which is the product
+  direction. See [S16](docs/reviews/S16-dependency-direction.md).
 - Frozen contract: [docs/phases/S0/card.md](docs/phases/S0/card.md).
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).

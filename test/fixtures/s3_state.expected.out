@@ -1,0 +1,14 @@
+e1 event=message id=1 retry=-1 has=0 data=[a]
+e2 event=message id=2 retry=-1 has=0 data=[b]
+e3 event=message id=2 retry=1000 has=1 data=[c]
+e4 event=message id=2 retry=1000 has=1 data=[d]
+e5 event=message id=2 retry=7 has=1 data=[e]
+before_finish id=9 has=1 hint=7
+finish=0
+after_finish_reset id=9 has=1 hint=7
+after_reset id=9
+e6 event=message id=9 retry=7 has=1 data=[f]
+e7 event=message id=9 retry=7 has=1 data=[g]
+e8 event=message id=9 retry=7 has=1 data=[h]
+n=8 err=0
+deleted

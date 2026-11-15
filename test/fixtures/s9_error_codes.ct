@@ -1,0 +1,119 @@
+/*
+ * S9 (coverage gap): the frozen error-code table.
+ *
+ *   1 protocol/limit, 2 OOM, 3 callback aborted, 4 reentrant, 5 finished.
+ *
+ * Callers branch on error_code(), so each value needs its own direct
+ * assertion; text-only checks (s5/s9/s10) do not prove the number.
+ * See docs/reviews/S14-coverage.md (X-1).
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "test/sse_alloc_hook.h"
+
+static int g_calls = 0;
+static int g_fail_at = 0;
+
+static void *t_alloc(size_t n)
+{
+    g_calls = g_calls + 1;
+    if (g_fail_at > 0 && g_calls == g_fail_at) return 0;
+    return malloc(n);
+}
+
+static void t_free(void *p)
+{
+    free(p);
+}
+
+static int cb_abort(SseEvent *ev, void *ud)
+{
+    if (ev == 0) return 1;
+    if (ud == 0) return 1;
+    return 0;
+}
+
+static SseParser *g_p = 0;
+
+static int cb_reenter(SseEvent *ev, void *ud)
+{
+    if (ev == 0) return 1;
+    if (ud == 0) return 1;
+    g_p->feed("data: inner\n\n", 13);
+    return 0;
+}
+
+static int cb_nop(SseEvent *ev, void *ud)
+{
+    if (ev == 0) return 1;
+    if (ud == 0) return 0;
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p;
+    char big[208];
+    int i;
+    int rc;
+
+    sse_test_alloc_hook(t_alloc, t_free);
+    p = sse::sse_parser_new();
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+
+    p->max_line_bytes(4);
+    rc = p->feed("12345\n\n", 8);
+    printf("limit rc=%d code=%d msg=%s\n", rc, p->error_code(), p->error_msg());
+
+    /* the limit is intentionally kept across reset(); restore a sane one */
+    p->max_line_bytes(1024);
+    p->reset();
+    p->finish();
+    rc = p->feed("data: x\n\n", 9);
+    printf("finished rc=%d code=%d msg=%s\n", rc, p->error_code(),
+           p->error_msg());
+
+    p->reset();
+    p->on_event(cb_abort, 0);
+    rc = p->feed("data: x\n\n", 9);
+    printf("abort rc=%d code=%d msg=%s\n", rc, p->error_code(), p->error_msg());
+
+    p->reset();
+    g_p = p;
+    p->on_event(cb_reenter, p);
+    rc = p->feed("data: y\n\n", 9);
+    printf("reentrant rc=%d code=%d msg=%s\n", rc, p->error_code(),
+           p->error_msg());
+
+    p->reset();
+    p->on_event(cb_nop, 0);
+    big[0] = 'd'; big[1] = 'a'; big[2] = 't'; big[3] = 'a'; big[4] = ':';
+    big[5] = ' ';
+    i = 6;
+    while (i < 206) {
+        big[i] = 'z';
+        i = i + 1;
+    }
+    big[206] = '\n';
+    big[207] = '\n';
+    g_fail_at = g_calls + 1;
+    rc = p->feed(big, 208);
+    printf("oom rc=%d code=%d msg=%s\n", rc, p->error_code(), p->error_msg());
+    g_fail_at = 0;
+
+    p->reset();
+    rc = p->feed("data: ok\n\n", 11);
+    printf("recovered rc=%d err=%d code=%d\n", rc, p->has_error(),
+           p->error_code());
+
+    sse::sse_parser_free(p);
+    printf("deleted\n");
+    return 0;
+}

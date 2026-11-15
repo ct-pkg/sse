@@ -52,6 +52,7 @@ int main(void)
 
     reg = reg.reg("dup", ctor_d1);
     reg = reg.reg("dup", ctor_d2);
+    printf("dup_err=%d size=%d\n", reg.error(), reg.size());
     SseParser *d = reg.make("dup");
     printf("dup=%d d1=%d d2=%d size=%d err=%d\n",
            d != 0, g_d1, g_d2, reg.size(), reg.error());

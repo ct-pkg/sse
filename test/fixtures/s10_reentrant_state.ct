@@ -1,0 +1,106 @@
+/*
+ * S10 (coverage gap): every mutating method in the reentrancy contract.
+ *
+ * s10_reentrant covers feed / reset / sse_parser_free plus the supported
+ * early stop. C-2.2 also names finish / on_event / max_line_bytes; each is
+ * rejected with code 4 and must NOT take effect:
+ *
+ *   - finish inside the callback must not mark the parser finished;
+ *   - on_event inside the callback must not replace the registered callback,
+ *     so the next event still reaches the original counter;
+ *   - max_line_bytes(1) inside the callback must not shrink the limit, so a
+ *     6-byte line still parses afterwards.
+ *
+ * See docs/reviews/S14-coverage.md (C-2).
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+struct Ctx {
+    SseParser *p;
+    int mode;
+    int events;
+    int inner;
+};
+
+static int on_ev_dummy(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+
+    if (ev == 0) return 0;
+    if (n != 0) *n = *n + 100;
+    return 0;
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    struct Ctx *c = ud;
+
+    if (ev == 0) return 1;
+    c->events = c->events + 1;
+    if (c->mode == 1) {
+        c->inner = c->p->finish();
+    } else if (c->mode == 2) {
+        c->inner = c->p->on_event(on_ev_dummy, 0);
+    } else if (c->mode == 3) {
+        c->inner = c->p->max_line_bytes(1);
+    }
+    return 0;
+}
+
+static void report(char *tag, struct Ctx *c, int rc)
+{
+    printf("%s inner=%d rc=%d err=%d code=%d msg=%s events=%d\n",
+           tag, c->inner, rc, c->p->has_error(), c->p->error_code(),
+           c->p->error_msg() != 0 ? c->p->error_msg() : "-", c->events);
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    struct Ctx c;
+    int rc;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    c.p = p;
+    c.mode = 0;
+    c.events = 0;
+    c.inner = 0;
+    p->on_event(on_ev, &c);
+
+    c.mode = 1;
+    rc = p->feed("data: outer1\n\n", 14);
+    report("finish_in_cb", &c, rc);
+    p->reset();
+    c.mode = 0;
+    rc = p->feed("data: after1\n\n", 14);
+    printf("after_finish rc=%d err=%d events=%d\n",
+           rc, p->has_error(), c.events);
+
+    c.mode = 2;
+    rc = p->feed("data: outer2\n\n", 14);
+    report("on_event_in_cb", &c, rc);
+    p->reset();
+    c.mode = 0;
+    rc = p->feed("data: after2\n\n", 14);
+    printf("after_on_event rc=%d err=%d events=%d\n",
+           rc, p->has_error(), c.events);
+
+    c.mode = 3;
+    rc = p->feed("data: outer3\n\n", 14);
+    report("max_line_in_cb", &c, rc);
+    p->reset();
+    c.mode = 0;
+    rc = p->feed("data: after3\n\n", 14);
+    printf("after_max_line rc=%d err=%d events=%d\n",
+           rc, p->has_error(), c.events);
+
+    sse::sse_parser_free(p);
+    printf("deleted\n");
+    return 0;
+}

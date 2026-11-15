@@ -1,0 +1,7 @@
+finish_in_cb inner=-1 rc=-1 err=1 code=4 msg=reentrant call is not allowed events=1
+after_finish rc=1 err=0 events=2
+on_event_in_cb inner=-1 rc=-1 err=1 code=4 msg=reentrant call is not allowed events=3
+after_on_event rc=1 err=0 events=4
+max_line_in_cb inner=-1 rc=-1 err=1 code=4 msg=reentrant call is not allowed events=5
+after_max_line rc=1 err=0 events=6
+deleted

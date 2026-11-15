@@ -1,0 +1,9 @@
+comment_colon=0
+e1 len=2 data=[ x]
+e2 len=5 data=[a:b:c]
+e3 len=0 data=[]
+case_sensitive=0
+unknown_field=0
+e4 len=2 data=[a\n]
+n=4 err=0
+deleted

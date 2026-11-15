@@ -1,0 +1,5 @@
+e1 len=1 data=[a]
+mid_bom_events=1
+e2 len=1 data=[c]
+n=2 err=0
+deleted

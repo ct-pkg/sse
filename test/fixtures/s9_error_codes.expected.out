@@ -1,0 +1,7 @@
+limit rc=-1 code=1 msg=SSE line exceeds 4 bytes
+finished rc=-1 code=5 msg=parser finished
+abort rc=-1 code=3 msg=callback aborted
+reentrant rc=-1 code=4 msg=reentrant call is not allowed
+oom rc=-1 code=2 msg=out of memory
+recovered rc=1 err=0 code=0
+deleted

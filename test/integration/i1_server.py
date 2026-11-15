@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Loopback SSE origin for the I-1 integration gate.
 
-Prints "PORT <n>" on stdout, accepts one POST, and writes the scripted body in
+Prints "PORT <n>" on stdout, accepts one request, and writes the scripted body in
 separate TCP writes with a short pause so chunk boundaries land inside lines.
 Standard library only.
 """

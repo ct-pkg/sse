@@ -59,7 +59,7 @@ ctc: cannot resolve import 'http/http'
 | `HttpChunkCb(char *data, int len, void *ud)` | `feed(char *data, int len)` | 适配器直接转发；`feed < 0` 时回调返回 1，中止传输 |
 | chunk 内存「仅在回调期间借用」 | `feed` 立刻拷贝进 parser 缓冲 | 所有权不冲突 |
 | `send_stream(cb, ud)` 返回 `CResponse *` | — | 读 `status/error/total_bytes` 后 `free` |
-| 公开入口只有 `char * -> post()` | — | 用 POST 取 SSE 响应；真实 SSE 通常用 GET，已作为建议记录，未改 ct-http |
+| 请求工厂 `char * -> post()`；未设 body 时 shim 置 `CURLOPT_HTTPGET=1` | — | 工厂名叫 `post`，线上方法是 **GET**；夹具未设 body，真实链路是 GET。命名歧义作为建议记录，未改 ct-http（[S16](S16-dependency-direction.md) §3） |
 
 ## 5 覆盖的链路行为
 
@@ -96,7 +96,8 @@ after=-1
 
 ## 7 对 ct-http 的建议（仅报告，未实施）
 
-1. 增加 GET（或流式 GET）入口：SSE 通常用 GET，当前只有 `char * -> post()`。
+1. 在文档与命名上消除「只能 POST」的歧义：`post()` 是请求工厂，未设 body 时
+   `http.shim.c` 置 `CURLOPT_HTTPGET=1`，实际发出 GET。已实测，不需要新增读取入口。
 2. 文档明确 chunk 边界不保证与服务器写入对齐；本门禁靠 40ms 间隔让切点落在行内，不是硬保证。
 3. 若需要确定性分片，可提供「回调前按脚本切块」的测试 seam；当前只能在服务器侧控制节奏。
 

@@ -1,0 +1,76 @@
+/*
+ * S3 (coverage gap): stream-level state and dispatch-time snapshots.
+ *
+ *   id 取 dispatch 时刻：同一块里 data 之后出现的 id 仍作用于本事件
+ *   retry 溢出（> INT_MAX）被忽略，保留前值
+ *   retry 前导零（007）是合法数字 -> 7
+ *   finish() 保留 id/retry
+ *   reset() 保留 lastEventId
+ *
+ * See docs/reviews/S14-coverage.md (W7, W8, F-2, F-3).
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d event=%s id=%s retry=%d has=%d data=[%s]\n",
+           *n, ev->event, ev->id != 0 ? ev->id : "-", ev->retry,
+           ev->has_retry(), ev->data);
+    return 0;
+}
+
+static int feed_str(SseParser *p, char *s)
+{
+    return p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int n = 0;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    feed_str(p, "id: 1\ndata: a\n\n");
+    feed_str(p, "data: b\nid: 2\n\n");
+    feed_str(p, "retry: 1000\ndata: c\n\n");
+    feed_str(p, "retry: 2147483648\ndata: d\n\n");
+    feed_str(p, "retry: 007\ndata: e\n\n");
+
+    feed_str(p, "id: 9\n\n");
+    printf("before_finish id=%s has=%d hint=%d\n",
+           p->last_event_id() != 0 ? p->last_event_id() : "-",
+           p->has_retry(), p->retry_hint());
+    printf("finish=%d\n", p->finish());
+    p->reset();
+    printf("after_finish_reset id=%s has=%d hint=%d\n",
+           p->last_event_id() != 0 ? p->last_event_id() : "-",
+           p->has_retry(), p->retry_hint());
+
+    p->reset();
+    printf("after_reset id=%s\n",
+           p->last_event_id() != 0 ? p->last_event_id() : "-");
+    feed_str(p, "data: f\n\n");
+
+    /* reset discards a partial line, so it cannot prefix the next event */
+    feed_str(p, "event: stale");
+    p->reset();
+    feed_str(p, "data: g\n\n");
+    feed_str(p, "data: stale");
+    p->reset();
+    feed_str(p, "data: h\n\n");
+
+    printf("n=%d err=%d\n", n, p->has_error());
+    delete p;
+    printf("deleted\n");
+    return 0;
+}
