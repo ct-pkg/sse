@@ -9,7 +9,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 (`ct --version`). Package version: 0.6.0.
+Requires CT v0.53.0 (`ct --version`). Package version: 0.8.0.
 
 ## Layout
 
@@ -54,6 +54,26 @@ Build a program that imports the package:
 $ ct build app.ct -I /path/to/ct-sse -o app --cflags "-Wall -Wextra -Werror"
 ```
 
+### Registry construction
+
+```ct
+static SseRegistry base;
+
+int main(void)
+{
+    SseRegistry reg = base.reg("parser", sse_parser_new);
+    SseParser *p = reg.make("parser");
+    if (p == 0) { /* reg.error() == 1: no such key */ }
+    delete p;
+    return 0;
+}
+```
+
+`reg`/`init` return the host by value, so the result lands on a variable. A
+method result cannot be the receiver of the next call, so write one statement
+per step (no `base.init().reg(...)`). For a local host, start with
+`SseRegistry reg = base.init();`.
+
 ## Public API
 
 Types: `SseEvent`, `SseEventCb`, `SseParser` (see the S0 card §3 for field-level
@@ -73,6 +93,11 @@ meaning). Everything else in `sse/sse.h.ct` is private.
 | `p->last_event_id()` | persistent last event id, `0` when cleared |
 | `p->retry_hint()` | persistent retry hint, `-1` when never set |
 | `p->reset()` | clear transient state for a new stream |
+| `SseRegistry.init()` | zero the host and return it by value |
+| `SseRegistry.reg(name, ctor)` | register a constructor, return the host by value |
+| `SseRegistry.make(name)` | construct by key; `0` + `error()==1` when missing |
+| `SseRegistry.error()` | `0` ok, `1` missing, `2` duplicate, `3` full |
+| `SseRegistry.size()` | registered entries |
 
 `ev->retry` is `-1` when the stream never sent `retry`; `retry: 0` is a real
 value. `ev->id` is `0` when the last event id buffer is empty.
@@ -90,6 +115,16 @@ value. `ev->id` is `0` when the last event id buffer is empty.
   never dispatched. `feed` after `finish` answers `-1` (`parser finished`).
 - `reset()` clears buffers/errors/finished and re-arms BOM handling; it keeps
   the last event id, the retry hint, the callback, and the line limit.
+
+### Registry behavior
+
+- `init()` zeroes the host and returns it by value.
+- `reg(name, ctor)` appends; a duplicate key is **not** overwritten: `err` is
+  `2`, the size is unchanged, and the first registration stays effective.
+- The ninth registration sets `err=3` (`full`); the size stays 8.
+- `make(name)` sets `err=0` on hit; on miss it returns `0` and sets `err=1`.
+- `name` is borrowed, not copied: use a literal or static storage.
+- `error()` reflects the most recent `reg`/`make`/`init`.
 
 ### Errors
 
@@ -141,6 +176,11 @@ These are language facts, not preferences (probes in `docs/reviews/S0-facts.md`)
   function-pointer table -- were probed and rejected (runtime lookup failure
   modes, mutable global ABI, no usability gain); see
   [docs/reviews/S0-constructor-shapes.md](docs/reviews/S0-constructor-shapes.md).
+- `impl int` is rejected (`impl of an unknown trait`); `int` can only host
+  methods through a `.m.ct` `map trait … for type int` static mapping, which has
+  no `self` and no state. A stateful registry therefore uses a struct host; the
+  probe table is in
+  [docs/reviews/S8-int-host.md](docs/reviews/S8-int-host.md).
 - Methods in `impl` have no forward declaration: helpers are defined before
   their callers.
 - A private method whose name starts with `_` cannot be called
@@ -166,6 +206,7 @@ $ bash test/run.sh s6_copy
 $ ASAN=1 bash test/run.sh s6_copy
 $ ASAN=1 bash test/run.sh s6_borrow_uaf
 $ bash test/run.sh s7_integration
+$ bash test/run.sh s8_registry
 ```
 
 Every fixture is built with `-Wall -Wextra -Werror`; the runner fails on any

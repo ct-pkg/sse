@@ -46,6 +46,10 @@ pub struct SseEvent {
 pub typedef int (*SseEventCb)(SseEvent *ev, void *ud);
 
 pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Drop;
+
+pub typedef SseParser *(*SseCtor)(void);
+
+pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 ```
 
 函数与方法（清单外一律私有）：
@@ -67,6 +71,11 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | `char *SseParser.last_event_id()` | 无则 0，否则返回内部持久缓冲（生命周期同 parser） |
 | `int SseParser.retry_hint()` | 未设置返回 -1 |
 | `void SseParser.reset()` | 见 §4 F-3 |
+| `SseRegistry SseRegistry.init()` | 归零宿主并按值返回；局部未初始化变量可先 `init` |
+| `SseRegistry SseRegistry.reg(char *name, SseCtor fn)` | 注册并返回宿主；见 §4 R-1 |
+| `SseParser *SseRegistry.make(char *name)` | 查表构造；缺失返回 0 并置 err |
+| `int SseRegistry.error()` | 0 成功、1 缺失、2 重键、3 满 |
+| `int SseRegistry.size()` | 当前条目数 |
 
 ## 4 行为契约（冻结）
 
@@ -107,6 +116,16 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | W9 | 流首（含 `reset` 后）一个 `EF BB BF` 忽略；非 BOM 前缀按普通字节回放 |
 | W10 | EOF 丢弃 pending data（见 F-2） |
 
+### R-1 注册表行为
+
+1. `init()` 归零 `count`/`err`/全部槽位，并按值返回宿主。
+2. `reg(name, fn)` 按值返回宿主；同名键已存在时**不覆盖**，置 `err=2`，条目数不变（首个注册生效）。
+3. `reg` 达到 8 条后再注册，置 `err=3`，条目数不变。
+4. `make(name)` 命中时置 `err=0` 并返回构造结果；缺失时返回 0、置 `err=1`。
+5. `name` 是借用指针，不复制；必须是字面量或静态存储。
+6. `error()` 反映最近一次 `reg`/`make`/`init` 的结果；`err` 值 0/1/2/3 冻结。
+7. 方法结果不能作下一跳接收者（SH-73），示例必须逐句落变量。
+
 ### M-1 所有权契约（写入 README，逐条可核对）
 
 1. `ev` 及 `ev->event/data/id` 只在回调返回前有效。
@@ -140,6 +159,7 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | S5 | 行上限/终止态 + `s5_*` 夹具 | `bash test/run.sh s5_limits` | `feat(sse): S5 限额与终止态` | M | 是 |
 | S6 | `sse_event_copy`/`sse_event_free` + `s6_copy` 夹具 | `bash test/run.sh s6_copy` | `feat(sse): S6 拷贝出口` | M | 是 |
 | S7 | README + 集成样例 + `s7_integration` 夹具 | `bash test/run.sh s7_integration` | `test(sse): S7 示例与文档` | S | 是 |
+| S8 | 值返回注册表 + `s8_registry` 夹具 | `bash test/run.sh s8_registry` | `feat(sse): S8 值返回注册表` | M | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -156,6 +176,7 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | E-7 | 不依赖静态固有方法 / errdefer / 链式调用（可 grep 核对） | `grep -n` 本卡 §2 三个禁用形态 |
 | E-8 | 任务清单每项可独立验收（6.6 T-6） | 逐项跑各自 `verify` |
 | E-9 | README 含 M-1 七条所有权契约与 §3 公开 API 清单 | 人工逐条核对 |
+| E-10 | R-1 七条：缺失/重键/满/init/首条生效逐条有夹具断言 | `bash test/run.sh s8_registry` |
 
 ## 7 非目标
 
@@ -167,3 +188,4 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | --- | --- | --- |
 | 2026-11-15 | 首版冻结；相对提案修正 WHATWG W10、retry 0 值、静态工厂、行上限、分期 | S0-facts、S0-battle |
 | 2026-11-15 | S6/S7 重切：原 S6（reset/finish）的行为已在 S1/S4/S5 落地，无独立红证可出；copy/free 移到 S6，README/集成样例移到 S7 | T-7 红证要求；E-5 需 copy 夹具 |
+| 2026-11-15 | 新增 S8：负责人指定「注册表方法返回宿主自身」形态；实测 struct 按值返回可用，int 宿主无法承载注册表状态，故用 struct 宿主，保留 `sse_parser_new` 作为构造器函数值 | [S8-int-host](../reviews/S8-int-host.md)、`s8_registry` |

@@ -125,6 +125,14 @@ hit=42 miss_null=1 dup_first=42
 
 因此不满足「比自由函数更可用」的门槛，按负责人要求保留自由函数，并在 README 注明两条替代形态已被实测否决。
 
+## 后续（S8）：负责人指定「返回宿主自身」的注册表
+
+本报告否定的是「全局单例」和「字符串键全局表」两种形态。S8 采用另一条：
+`SseRegistry` **struct 宿主按值返回**，`reg`/`init` 返回宿主自身，`make` 返回
+构造对象；实测可写 `SseRegistry reg = base.reg(...)`、`reg = reg.reg(...)`。
+`int` 宿主的 `impl int` 不被接受，`map trait` 只能挂无状态方法，无法承载
+注册表状态，故不采用。详见 [S8-int-host](S8-int-host.md)。
+
 ## 门禁回归（未改实现）
 
 ```console
