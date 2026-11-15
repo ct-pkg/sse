@@ -277,6 +277,22 @@ impl SseParser {
         return 0;
     }
 
+    int replay_bom() {
+        int j = 0;
+        int fired = 0;
+        int r;
+
+        while (j < self->bom_len) {
+            r = self->consume(self->bom_buf[j]);
+            if (r < 0) return -1;
+            fired = fired + r;
+            j = j + 1;
+        }
+        self->bom_len = 0;
+        self->bom_state = 3;
+        return fired;
+    }
+
     pub int on_event(SseEventCb fn, void *user) {
         self->cb = fn;
         self->ud = user;
@@ -304,6 +320,37 @@ impl SseParser {
         if (chunk == 0 || len <= 0) return 0;
 
         while (i < len) {
+            if (self->bom_state != 3) {
+                self->bom_buf[self->bom_len] = chunk[i];
+                self->bom_len = self->bom_len + 1;
+                if (self->bom_len == 1) {
+                    if ((unsigned char)self->bom_buf[0] != 0xEF) {
+                        r = self->replay_bom();
+                        if (r < 0) return -1;
+                        fired = fired + r;
+                    }
+                } else if (self->bom_len == 2) {
+                    if ((unsigned char)self->bom_buf[0] != 0xEF ||
+                        (unsigned char)self->bom_buf[1] != 0xBB) {
+                        r = self->replay_bom();
+                        if (r < 0) return -1;
+                        fired = fired + r;
+                    }
+                } else {
+                    if ((unsigned char)self->bom_buf[0] == 0xEF &&
+                        (unsigned char)self->bom_buf[1] == 0xBB &&
+                        (unsigned char)self->bom_buf[2] == 0xBF) {
+                        self->bom_state = 3;
+                        self->bom_len = 0;
+                    } else {
+                        r = self->replay_bom();
+                        if (r < 0) return -1;
+                        fired = fired + r;
+                    }
+                }
+                i = i + 1;
+                continue;
+            }
             r = self->consume(chunk[i]);
             if (r < 0) return -1;
             fired = fired + r;

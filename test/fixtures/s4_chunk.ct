@@ -3,7 +3,7 @@
  *
  * A line may be split anywhere, including between CR and LF. The BOM may be
  * split across feeds; a non-BOM first byte must be replayed rather than
- * dropped. A null/empty chunk is a no-op.
+ * dropped. reset() starts a new stream, so a following BOM is stripped again.
  */
 import sse::sse;
 
@@ -41,21 +41,25 @@ int main(void)
     }
     p->on_event(on_ev, &n);
 
-    for (i = 0; bytewise[i] != 0; i++)
-        p->feed(bytewise + i, 1);
-
-    feed_str(p, "data: a\r");
-    feed_str(p, "\n\r\n");
-    feed_str(p, "data: b\r\r");
-    feed_str(p, "data: c\n\n");
-
     feed_str(p, bom_together);
 
+    p->reset();
     p->feed(&ef, 1);
     p->feed(&bb, 1);
     p->feed(&bf, 1);
     feed_str(p, "data: e\n\n");
 
+    p->reset();
+    for (i = 0; bytewise[i] != 0; i++)
+        p->feed(bytewise + i, 1);
+
+    p->reset();
+    feed_str(p, "data: a\r");
+    feed_str(p, "\n\r\n");
+    feed_str(p, "data: b\r\r");
+    feed_str(p, "data: c\n\n");
+
+    p->reset();
     p->feed(bytewise, 1);              /* 'd', not a BOM: must be replayed */
     feed_str(p, "ata: h\n\n");
 

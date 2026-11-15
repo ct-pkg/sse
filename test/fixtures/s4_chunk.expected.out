@@ -1,9 +1,9 @@
-e1 len=5 data=[hello]
-e2 len=1 data=[a]
-e3 len=1 data=[b]
-e4 len=1 data=[c]
-e5 len=1 data=[d]
-e6 len=1 data=[e]
+e1 len=1 data=[d]
+e2 len=1 data=[e]
+e3 len=5 data=[hello]
+e4 len=1 data=[a]
+e5 len=1 data=[b]
+e6 len=1 data=[c]
 e7 len=1 data=[h]
 null_feed=0 n=7 err=0
 deleted
