@@ -4,7 +4,8 @@
  * What is frozen for this phase (S0 card §3/§4):
  *   - sse_parser_new() returns a live instance (0 on OOM, not reachable here)
  *   - has_error() is 0, error_msg() is NULL, last_event_id() is NULL,
- *     retry_hint() is -1 on a fresh parser
+ *     has_retry() is 0 on a fresh parser (retry_hint() is only defined
+ *     once has_retry() answers 1)
  *   - finish() marks the stream finished; a second finish() answers -1
  *   - feed() after finish() answers -1 and records "parser finished"
  *   - reset() clears the error/finished state
@@ -25,9 +26,9 @@ int main(void)
         return 1;
     }
 
-    printf("err=%d msg_null=%d id_null=%d retry=%d\n",
+    printf("err=%d msg_null=%d id_null=%d has_retry=%d\n",
            p->has_error(), p->error_msg() == 0,
-           p->last_event_id() == 0, p->retry_hint());
+           p->last_event_id() == 0, p->has_retry());
 
     printf("finish=%d\n", p->finish());
     printf("finish2=%d\n", p->finish());

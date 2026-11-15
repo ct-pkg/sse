@@ -1,0 +1,13 @@
+fresh has=0
+e1 ev_has=1 ev_retry=0 data=[a]
+zero has=1 hint=0
+e2 ev_has=1 ev_retry=0 data=[b]
+after_b has=1 hint=0
+e3 ev_has=1 ev_retry=0 data=[c]
+after_c has=1 hint=0
+after_reset has=1 hint=0
+e4 ev_has=1 ev_retry=0 data=[d]
+after_invalid has=1 hint=0
+e5 ev_has=1 ev_retry=250 data=[e]
+after_250 has=1 hint=250
+deleted

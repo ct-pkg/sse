@@ -1,0 +1,63 @@
+/*
+ * S3: parser retry split into has_retry() + retry_hint().
+ *
+ * retry: 0 is a legal, *set* value: has_retry() == 1 and retry_hint() == 0.
+ * Later events that do not repeat the field, and reset(), keep it set.
+ * retry_hint() has no meaning while has_retry() answers 0; callers must
+ * check has_retry() first.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d ev_has=%d ev_retry=%d data=[%s]\n",
+           *n, ev->has_retry(), ev->retry, ev->data);
+    return 0;
+}
+
+static void feed_str(SseParser *p, char *s)
+{
+    p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int n = 0;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    printf("fresh has=%d\n", p->has_retry());
+
+    feed_str(p, "retry: 0\ndata: a\n\n");
+    printf("zero has=%d hint=%d\n", p->has_retry(), p->retry_hint());
+
+    feed_str(p, "data: b\n\n");
+    printf("after_b has=%d hint=%d\n", p->has_retry(), p->retry_hint());
+
+    feed_str(p, "event: ping\ndata: c\n\n");
+    printf("after_c has=%d hint=%d\n", p->has_retry(), p->retry_hint());
+
+    p->reset();
+    printf("after_reset has=%d hint=%d\n", p->has_retry(), p->retry_hint());
+
+    feed_str(p, "retry: 3x\ndata: d\n\n");
+    printf("after_invalid has=%d hint=%d\n",
+           p->has_retry(), p->retry_hint());
+
+    feed_str(p, "retry: 250\ndata: e\n\n");
+    printf("after_250 has=%d hint=%d\n", p->has_retry(), p->retry_hint());
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

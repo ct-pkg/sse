@@ -46,16 +46,20 @@ int main(void)
     printf("last_id=%s\n", p->last_event_id());
     feed_str(p, "data: b\n\n");
 
-    printf("hint_before=%d\n", p->retry_hint());
+    printf("hint_before has=%d\n", p->has_retry());
     feed_str(p, "retry: 3000\ndata: c\n\n");
-    printf("hint_3000=%d\n", p->retry_hint());
+    printf("hint_3000 has=%d hint=%d\n",
+           p->has_retry(), p->retry_hint());
     feed_str(p, "data: d\n\n");
     feed_str(p, "retry: 0\ndata: e\n\n");
-    printf("hint_zero=%d\n", p->retry_hint());
+    printf("hint_zero has=%d hint=%d\n",
+           p->has_retry(), p->retry_hint());
     feed_str(p, "retry: +5\ndata: f\n\n");
     feed_str(p, "retry: -1\ndata: g\n\n");
     feed_str(p, "retry: 3x\ndata: h\n\n");
     feed_str(p, "retry:\ndata: i\n\n");
+    printf("hint_invalid has=%d hint=%d\n",
+           p->has_retry(), p->retry_hint());
 
     feed_str(p, "event: ghost\n\n");
     feed_str(p, "data: j\n\n");
