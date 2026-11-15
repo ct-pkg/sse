@@ -28,6 +28,8 @@ int main(void)
     SseParser *p = sse::sse_parser_new();
     int n = 0;
     int rc;
+    int i;
+    char buf[4100];
 
     if (p == 0) {
         printf("new=0\n");
@@ -56,6 +58,30 @@ int main(void)
     p->reset();
     rc = feed_str(p, "123456789\n\n");
     printf("over9=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
+
+    /* Boundary frozen at n = 4096 content bytes: exactly n passes, n+1 fails. */
+    p->reset();
+    printf("set4096=%d\n", p->max_line_bytes(4096));
+    i = 0;
+    while (i < 4096) {
+        buf[i] = 'a';
+        i = i + 1;
+    }
+    buf[4096] = '\n';
+    buf[4097] = '\n';
+    rc = p->feed(buf, 4098);
+    printf("exact4096=%d err=%d\n", rc, p->has_error());
+
+    p->reset();
+    i = 0;
+    while (i < 4097) {
+        buf[i] = 'a';
+        i = i + 1;
+    }
+    buf[4097] = '\n';
+    buf[4098] = '\n';
+    rc = p->feed(buf, 4099);
+    printf("over4097=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
 
     p->reset();
     printf("feed3=%d\n", feed_str(p, "data: ok\n\n"));

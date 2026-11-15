@@ -9,7 +9,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 (`ct --version`). Package version: 0.8.0.
+Requires CT v0.53.0 (`ct --version`). Package version: 0.8.1.
 
 ## Layout
 
@@ -86,12 +86,13 @@ meaning). Everything else in `sse/sse.h.ct` is private.
 | `void sse_event_free(SseEvent *ev)` | free a copy (never a view) |
 | `ev->has_id()`, `ev->has_retry()`, `ev->is_message()` | field predicates |
 | `p->on_event(cb, ud)` | register/clear the callback |
-| `p->max_line_bytes(n)` | content-byte limit (default 65536); `n <= 0` is rejected |
+| `p->max_line_bytes(n)` | content-byte limit (default 65536): exactly `n` bytes pass, byte `n+1` fails; `n <= 0` is rejected |
 | `p->feed(chunk, len)` | bytes in; returns events fired this call, or `-1` |
 | `p->finish()` | mark EOF and discard pending bytes per WHATWG |
 | `p->has_error()`, `p->error_msg()` | terminal error state / text |
 | `p->last_event_id()` | persistent last event id, `0` when cleared |
-| `p->retry_hint()` | persistent retry hint, `-1` when never set |
+| `p->has_retry()` | 1 once a legal `retry` field was seen, `0` otherwise |
+| `p->retry_hint()` | persistent retry hint; only meaningful when `has_retry()` is 1 |
 | `p->reset()` | clear transient state for a new stream |
 | `SseRegistry.init()` | zero the host and return it by value |
 | `SseRegistry.reg(name, ctor)` | register a constructor, return the host by value |
@@ -101,6 +102,11 @@ meaning). Everything else in `sse/sse.h.ct` is private.
 
 `ev->retry` is `-1` when the stream never sent `retry`; `retry: 0` is a real
 value. `ev->id` is `0` when the last event id buffer is empty.
+
+On the parser, check `has_retry()` before `retry_hint()`: the hint's value is
+undefined until a legal `retry` field arrives. `retry: 0` counts as set
+(`has_retry() == 1`, `retry_hint() == 0`) and stays set across later events
+and across `reset()`.
 
 ## Contract in one page
 

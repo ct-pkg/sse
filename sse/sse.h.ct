@@ -471,8 +471,14 @@ impl SseParser {
         return self->id_buf;
     }
 
+    /* A retry hint exists only after a legal `retry:` field. The value of
+     * retry_hint() is undefined while has_retry() answers 0; check it first.
+     * `retry: 0` is a real, set value: has_retry() == 1, retry_hint() == 0. */
+    pub int has_retry() {
+        return self->retry_valid;
+    }
+
     pub int retry_hint() {
-        if (self->retry_valid == 0) return -1;
         return self->retry;
     }
 

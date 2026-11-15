@@ -3,6 +3,6 @@
 # Pure protocol layer: bytes in, events out. No HTTP, no LLM semantics, no
 # reconnects. See docs/phases/S0/card.md for the frozen contract.
 name = sse
-version = 0.8.0
+version = 0.8.1
 licence = MIT
 requires = ct >= 0.53.0

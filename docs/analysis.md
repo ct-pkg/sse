@@ -31,7 +31,7 @@ WHATWG 的 `id` 清除、`data:` 空事件与行上限边界。
 | 高 | `_data` 缓冲区事件后 `_data_len=0` 复用 | 调用方在回调里存 `ev->data`，第二事件复用同一块内存并改写；表现为“上一条消息内容突然变成下一条” | 与上条共用 copy API；负例固定为同一 `feed` 块内两个事件，断言第一个存下的指针与第二个 `ev->data` 相同且内容不同；测试必须红 |
 | 高 | `_dispatch_event` 把回调非 0 转成 `_set_error("callback aborted")` 返回 -1，但 `feed` 契约写“返回回调次数” | 调用方按“次数”使用 -1（当成负数计数）或忽略错误继续 `feed`；错误状态与返回值两套语义，无法判断是否应停止 | 冻结一条：`feed` 成功返回 `>=0` 的事件数，任何错误（含回调中断）返回 `-1` 并置 `has_error()`；中断后不再解析本块；负例：回调返回 1，断言 `feed == -1`、`has_error()` 为真、后续事件未分发 |
 | 中 | `retry` 被当成“只在当前事件有效” | 每个事件后清掉重连时间，客户端用默认值重连；服务端下发的退避失效。`SseEvent.retry` 可做当前快照，但不能反推 parser 状态 | 按 WHATWG 把 `_retry` 做成流级状态：只在 `retry` 字段为纯数字时更新，跨事件保留；`retry_hint()` 返回它；负例：事件 A 设 3000，事件 B 不设，断言 B 后仍为 3000 |
-| 中 | `_line_len + 1 >= _max_line_bytes` 的边界 | 若 `n` 被理解为“最大内容字节数”，恰好 `n` 字节的合法行被误拒；若 `n` 是含 NUL 的容量，则该判据正确，但 API 文档没写清 | 明确契约：`max_line_bytes(n)` 的 `n` = 含结尾 NUL 的缓冲容量，内容上限 `n-1`；或改为分配 `n+1` 并判 `_line_len >= n`。负例测 `n-1`/`n`/`n+1` 三种行 |
+| 中 | `_line_len + 1 >= _max_line_bytes` 的边界 | 恰好 `n` 字节的合法行被误拒；文档写“行上限 64KB”与判据对不上，边界不可核对 | 契约按内容字节上限：判 `_line_len >= n`，恰好 `n` 字节的行通过，第 `n+1` 字节触发 -1；用例取 `n` 与 `n+1`（`n=4096`） |
 | 中 | `_xxx` 方法实际是公开 API | 消费者可以调用/链接 `SseParser__xxx`；改名或删私有 helper 变成破坏性变更；符号面比设计大 | 私有逻辑写成 `.ct` 内 `static` 自由函数；`.h.ct` 只留 `new`/`on_event`/`feed`/`finish`/`has_error`/`error_msg`/`last_event_id`/`retry_hint`/`reset`；在 API 文档列明公开面 |
 | 中 | `SseParser` 按值内嵌 `SseEvent`，而生成头不带 `#include` | 若两个类型分居两个 `.h.ct`，消费者的 `SseParser.h` 需要先看到 `SseEvent` 的完整定义；include 顺序错就编译失败 | 两个类型放同一个 `.h.ct`；或保证依赖头先被包含，并在包文档写死顺序 |
 | 低 | 文件作用域 `_set_error` 使用前导 `_` + 小写 | C 标准把该形态保留给实现；换编译器/平台可能撞符号或告警 | 改名 `sse_set_error`（或 `sse_errorf`）；字段 `_x` 不受影响 |

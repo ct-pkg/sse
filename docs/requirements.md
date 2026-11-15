@@ -40,7 +40,7 @@
 | R-A-06 | 提案用"data 缓冲为空则不分发"，但 `data:` 会先落入一个 LF，trim 后为空串仍应分发**空 data 事件**；判定必须以"本事件块是否出现过 data 字段"为准 | ① `"data:\n\n"` → 触发 1 次，`data_len == 0`，data 指向空串；② `"event: ping\n\n"` → 触发 0 次，且 event 缓冲已被清空（随后 `"data: x\n\n"` 的 event 为 `message`）；③ `"id: 7\n\n"` → 触发 0 次 | 不把空 data 视为错误；不特殊处理空事件 | 已支持 |
 | R-A-07 | event 指定事件类型；缺省或空值回落 `message`；dispatch 后必须清空，不跨事件 | ① `"event: ping\ndata: x\n\n"` → `ev->event == "ping"` 且 `is_message() == 0`；② 随后 `"data: y\n\n"` → `ev->event == "message"` 且 `is_message() == 1`；③ `"event:\ndata: x\n\n"` → `message` | 不做事件类型路由/订阅 | 已支持 |
 | R-A-08 | id 是流级持久 lastEventId：跨事件保留、空值清除、值含 NUL 时整条忽略、取值点为 dispatch 时刻 | ① `"id: 1\ndata: a\n\n"` → `ev->id == "1"`；随后 `"data: b\n\n"` → `ev->id` 仍为 `"1"`，`last_event_id() == "1"`；② 在下一块前插入 `"id:\n\n"` → 之后 `ev->id == NULL`、`has_id() == 0`、`last_event_id() == NULL`；③ id 值含 `\0` 时整条 id 行忽略，前值保留；④ id 行出现在上一块空行之后时，不影响已分发事件的 `ev->id` | 不生成 `Last-Event-ID` 请求头（ct-http 负责） | 已支持 |
-| R-A-09 | 提案把 retry 当"只在本事件有效"并在 dispatch 后清零，与 WHATWG 的流级重连时间冲突 | ① `"retry: 3000\ndata: a\n\n"` 后 `retry_hint() == 3000`；随后 `"data: b\n\n"`（不设 retry）后仍为 3000；② `retry: 3x` / `retry: -1` / `retry:` / 超出 `INT_MAX` 均不更新，保持前值；③ `SseEvent.retry` 等于 dispatch 时刻的持久值，`has_retry()` 等价于该值非 0 | 不实现退避算法；不把 retry 用于本包内重连 | 已支持 |
+| R-A-09 | 提案把 retry 当"只在本事件有效"并在 dispatch 后清零，与 WHATWG 的流级重连时间冲突 | ① `"retry: 3000\ndata: a\n\n"` 后 `has_retry() == 1`、`retry_hint() == 3000`；随后 `"data: b\n\n"`（不设 retry）后仍为 3000；② `retry: 3x` / `retry: -1` / `retry:` / 超出 `INT_MAX` 均不更新，保持前值；③ `SseEvent.retry` 等于 dispatch 时刻的持久值，`has_retry()` 等价于该值非 0；④ `retry: 0` 是合法已设置值：parser 的 `has_retry() == 1`、`retry_hint() == 0` | 不实现退避算法；不把 retry 用于本包内重连 | 已支持 |
 | R-A-10 | 空行是事件边界；无 data 字段的块不分发，但事件类型缓冲仍按规范在分发时机清空 | ① `"\n\n\n"` 连续空行 → 0 次回调、`has_error() == 0`；② `"data: 1\n\ndata: 2\n\n"` → 2 次且顺序正确；③ 无 data 块后紧跟的事件其 event 为 `message` | 不合并空事件、不排队延迟分发 | 已支持 |
 
 ### 3.2 B 组：事件暴露与回调
@@ -59,7 +59,7 @@
 | --- | --- | --- | --- | --- |
 | R-C-01 | L5 下工厂返回值不能写 `own`，需要明确可用的构造/销毁方式 | ① `SseParser::new()` 返回可用实例，`new()` 对 `calloc` 失败返回 0；② `delete p` 后内部五块缓冲全部释放（ASan/valgrind 无泄漏）；③ README 明确"`new()` 返回裸指针，调用方负责 `delete`" | 不提供 `own` 返回值；不做引用计数 | 已支持（L5 包层适配：显式 `delete`） |
 | R-C-02 | 所有内部缓冲由 parser 独占，`drop` 负责释放；`_current` 是借用视图不得单独释放 | ① `drop` 只释放 line / data / event / last_event_id / error_msg 五块；② "注册回调 + 已分发事件 + 含错误文本"路径下 `delete`，ASan 无 double-free / leak；③ `SseEvent` 无 `Drop`，不被递归清理（可核对生成头或运行时无二次释放） | 不做跨 parser 共享缓冲 | 已支持（显式 `impl Drop` 不生成字段递归 glue） |
-| R-C-03 | 单行无限增长会打穿内存，需要可配置上限 | ① 默认上限 65536 生效，超限 `feed` 返回 -1、`has_error() == 1`，错误文本含实际上限数值；② `max_line_bytes(n)` 后，长度 `n-1` 内容行可解析，长度 `n` 内容行被拒（n 的确切含义见 Q-03） | 不限制事件 data 总量（见 R-C-04） | 已支持 |
+| R-C-03 | 单行无限增长会打穿内存，需要可配置上限 | ① 默认上限 65536 生效，超限 `feed` 返回 -1、`has_error() == 1`，错误文本含实际上限数值；② `max_line_bytes(n)` 的 `n` 是内容字节上限（不是含 NUL 的容量）：恰好 `n` 字节的行可解析，第 `n+1` 字节触发 -1（判据以 `n=4096` 写死） | 不限制事件 data 总量（见 R-C-04） | 已支持 |
 | R-C-04 | 提案只有行上限，没有事件级 data 上限；恶意流可用无限 data 行持续累积 | 若纳入：设定上限后，超限事件返回 -1、`has_error() == 1`，且连续超限输入下进程内存不持续增长（以分配计数或 RSS 核对） | 不限制单条流的总长度 | 已支持（是否本期见 Q-05） |
 
 ### 3.4 D 组：错误与状态
@@ -69,7 +69,7 @@
 | R-D-01 | 协议非致命情况必须忽略且不报错；资源耗尽与回调中断才置错误 | ① 未知字段、非法 retry、注释行、非法 id 之后 `has_error() == 0` 且 `error_msg() == NULL`；② 行超限 / OOM / 回调中断后 `has_error() == 1` 且 `error_msg() != NULL` | 不提供错误码枚举（本期只有整型标志 + 文本） | 已支持 |
 | R-D-02 | 错误文本是否稳定影响测试写法与调用方处理 | 三类错误各产出一条非空文本，内容与提案 §7 表一致（行超限文本含实际上限、OOM、回调中断）；比对方式（精确 / 前缀）按 Q-07 冻结口径 | 不做错误国际化、不做错误分类码 | 已支持 |
 | R-D-03 | 流结束需要处理残留半行与未分发 data，否则最后一条事件丢失 | ① `"data: a"`（无结尾换行）+ `finish()` → 1 次事件，data 为 `a`；② `"data: a\n"` + `finish()` → 1 次；③ 空 parser + `finish()` → 0 次、无错误；④ `finish()` 返回值与 `feed` 同口径（次数 / -1），具体见 Q-06；⑤ `finish()` 不隐式 `reset`、不隐式 `delete` | 不自动关闭/释放 parser | 已支持 |
-| R-D-04 | 调用方需要读取持久 lastEventId 与重连建议，用于跨流重连 | ① 无 id 时 `last_event_id() == NULL`，有 id 时返回持久值且跨事件不变；② 无 retry 时 `retry_hint() == 0`，有 retry 时返回持久值；③ 返回值在 parser 生命周期内有效，`delete` 后失效（文档写明） | 不返回副本；不负责生成请求头 | 已支持 |
+| R-D-04 | 调用方需要读取持久 lastEventId 与重连建议，用于跨流重连 | ① 无 id 时 `last_event_id() == NULL`，有 id 时返回持久值且跨事件不变；② `has_retry()` 返回 0/1；`retry_hint()` 仅在 `has_retry() == 1` 时有意义（未设置时的返回值不构成契约，调用方必须先判 `has_retry()`）；`retry: 0` → `has_retry() == 1`、`retry_hint() == 0`；③ 返回值在 parser 生命周期内有效，`delete` 后失效（文档写明） | 不返回副本；不负责生成请求头 | 已支持 |
 | R-D-05 | 复用 parser 处理新流，同时保留重连所需状态 | ① `reset()` 后行缓冲、data、event、errors、`_saw_cr` 清零；② `last_event_id` 与回调注册保留；③ `reset()` 后喂新流不携带上一流的半行与事件；④ `max_line_bytes` 配置保留；⑤ `_retry` 是否清空按 Q-04 冻结口径 | 不释放缓冲（保留容量）；不重置配置 | 已支持 |
 
 ### 3.5 E 组：工程与交付
@@ -112,7 +112,7 @@
 | 13 | retry 纯数字校验 | §5.5 `strtol` + end 指针校验 | 已覆盖 | R-A-09 | 已定 |
 | 14 | event 生命周期 | §5.6 dispatch 后清空 | 已覆盖 | R-A-07 | 已定 |
 | 15 | lastEventId 取值点 | §5.6 dispatch 时读持久缓冲 | 已覆盖 | R-A-08 | 已定 |
-| 16 | 行上限边界 | §5.3 `_line_len + 1 >= _max_line_bytes`，`n` 含义未写 | 缺口（契约歧义） | R-C-03，见 Q-03 | **待确认** |
+| 16 | 行上限边界 | §5.3 `_line_len + 1 >= _max_line_bytes`，`n` 含义未写 | 缺口（契约歧义） | R-C-03，已按第 5 题裁定：`n` = 内容字节上限，`n` 合法、`n+1` 报错 | 已定 |
 | 17 | 事件级 data 总量 | 无 | 缺口 | R-C-04，见 Q-05 | **待确认** |
 | 18 | `feed` / `finish` 返回契约 | §5.3 / §5.7 与回调中断冲突 | 缺口 | A 方案，见 §4 #4 / Q-06 | 已定 / Q-06 |
 | 19 | 错误文本稳定性 | §7 给了四条文本，未声明是否稳定契约 | 缺口 | R-D-02，见 Q-07 | **待确认** |
@@ -125,7 +125,7 @@
 | --- | --- | --- | --- |
 | Q-01 | `sse_event_copy(ev)` 是否纳入本包公开 API | 提案无此 API；analysis §3 把它列为"借用风险"的最小防线之一。口径 A：纳入并配释放函数；口径 B：不提供，只在文档要求调用方自行 `strdup`/拷贝 | 卡住 R-B-05 的验收是否存在；也卡住 R-B-04 防线强度（无 copy API 时负例只能证明"会失效"，不能给出正解）；并影响公开面清单 Q-02 |
 | Q-02 | 公开 API 面最终清单 | 需求层已定"最小且可枚举"，但清单尚未逐条确认。候选：`new` / `on_event` / `max_line_bytes` / `feed` / `finish` / `has_error` / `error_msg` / `last_event_id` / `retry_hint` / `reset`（10 项），是否增删 | 卡住 R-E-01 的符号比对没有基线；后续任何 helper 改名都会变成破坏性变更却无法判定 |
-| Q-03 | `max_line_bytes(n)` 的 `n` 含义 | 口径 A：`n` = 含结尾 NUL 的缓冲容量，内容上限 `n-1`（现有判据 `_line_len + 1 >= n` 自洽）；口径 B：`n` = 内容字节上限，需改判据为 `_line_len >= n` | 卡住 R-C-03 的 `n-1` / `n` / `n+1` 三组边界用例；卡住 README 该参数的可核对描述 |
+| Q-03 | `max_line_bytes(n)` 的 `n` 含义 | **已定（第 5 题裁定）**：`n` = 单行内容字节上限（不是含结尾 NUL 的缓冲容量）；判据为 `_line_len >= n` 时拒绝下一个字节，恰好 `n` 字节的行合法；正例取 `n`、反例取 `n+1` | 已不阻塞；R-C-03 与 README 按此口径 |
 | Q-04 | `reset()` 是否清空 `_retry` | 口径 A：新流则清（`reset` 后 `retry_hint() == 0`）；口径 B：保留，视为跨流重连建议 | 卡住 R-D-05 的验收；影响"复用 parser 做重连"时退避值是否被意外重置 |
 | Q-05 | 事件级 data 总量上限是否本期纳入 | 提案只有行上限；口径 A：本期加 `max_event_bytes(n)` 一类上限；口径 B：明确"本期不主张"，只留行上限 | 卡住 R-C-04 是否成立；若不做，需在文档中写明"单事件可以无限累积"这一已知风险，否则内存安全验收不完整 |
 | Q-06 | `finish()` 返回值是否与 `feed` 同口径（A 方案） | 提案写"返回回调次数；错误 -1"，与 `feed` 同类歧义；analysis 未单列 | 卡住 R-D-03 的验收；若两者口径不一致，调用方需要两套判断逻辑，集成成本上升 |

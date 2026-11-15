@@ -63,13 +63,14 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | `SseEvent.has_retry()` | `retry >= 0` |
 | `SseEvent.is_message()` | `strcmp(event, "message") == 0` |
 | `int SseParser.on_event(SseEventCb cb, void *ud)` | 注册/清除回调；总返回 0 |
-| `int SseParser.max_line_bytes(int n)` | `n >= 1` 设置上限并返回 0；`n <= 0` 返回 -1 且保留旧值 |
+| `int SseParser.max_line_bytes(int n)` | `n >= 1` 设置上限并返回 0；`n <= 0` 返回 -1 且保留旧值；`n` 是内容字节上限（不含 NUL），恰好 `n` 字节的行合法，第 `n+1` 字节报超限 |
 | `int SseParser.feed(char *chunk, int len)` | 见 §4 F-1 |
 | `int SseParser.finish()` | 见 §4 F-2 |
 | `int SseParser.has_error()` | 0/1 |
 | `char *SseParser.error_msg()` | 无错误返回 0；有错误返回稳定文本 |
 | `char *SseParser.last_event_id()` | 无则 0，否则返回内部持久缓冲（生命周期同 parser） |
-| `int SseParser.retry_hint()` | 未设置返回 -1 |
+| `int SseParser.has_retry()` | 本流是否已收到合法 `retry` 字段；0/1 |
+| `int SseParser.retry_hint()` | 仅当 `has_retry() == 1` 时有意义；未设置时返回值不构成契约 |
 | `void SseParser.reset()` | 见 §4 F-3 |
 | `SseRegistry SseRegistry.init()` | 归零宿主并按值返回；局部未初始化变量可先 `init` |
 | `SseRegistry SseRegistry.reg(char *name, SseCtor fn)` | 注册并返回宿主；见 §4 R-1 |
@@ -126,6 +127,14 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 6. `error()` 反映最近一次 `reg`/`make`/`init` 的结果；`err` 值 0/1/2/3 冻结。
 7. 方法结果不能作下一跳接收者（SH-73），示例必须逐句落变量。
 
+### R-2 retry 查询（第 4 题裁定）
+
+1. `has_retry()` 返回 0/1，表示本流是否已有合法的 `retry` 字段。
+2. `retry_hint()` 的返回值只在 `has_retry() == 1` 时有意义；调用方必须先判 `has_retry()`，不得直接使用未设置时的返回值。
+3. `retry: 0` 是合法已设置值：`has_retry() == 1`、`retry_hint() == 0`。
+4. 后续事件未再出现 `retry` 字段时，仍保持已设置（`has_retry() == 1`）。
+5. `reset()` 保留 retry 及有效性（同 F-3）。
+
 ### M-1 所有权契约（写入 README，逐条可核对）
 
 1. `ev` 及 `ev->event/data/id` 只在回调返回前有效。
@@ -154,7 +163,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | --- | --- | --- | --- | --- | --- |
 | S1 | `sse/sse.h.ct` 骨架 + `test/run.sh` + `test/fixtures/s1_*.ct` | `bash test/run.sh s1_construct` | `feat(sse): S1 骨架与构造` | S | 是 |
 | S2 | 行切分/字段解析/data 分发 + `s2_*` 夹具 | `bash test/run.sh s2_basic` | `feat(sse): S2 最小解析闭环` | M | 是 |
-| S3 | event/id/retry 语义 + `s3_*` 夹具 | `bash test/run.sh s3_fields` | `feat(sse): S3 字段语义` | M | 是 |
+| S3 | event/id/retry 语义 + `s3_*` 夹具 | `bash test/run.sh s3_fields`；`bash test/run.sh s3_retry_zero` | `feat(sse): S3 字段语义` | M | 是 |
 | S4 | 跨分片行结束 + BOM + `s4_*` 夹具 | `bash test/run.sh s4_chunk` | `feat(sse): S4 分片与 BOM` | M | 是 |
 | S5 | 行上限/终止态 + `s5_*` 夹具 | `bash test/run.sh s5_limits` | `feat(sse): S5 限额与终止态` | M | 是 |
 | S6 | `sse_event_copy`/`sse_event_free` + `s6_copy` 夹具 | `bash test/run.sh s6_copy` | `feat(sse): S6 拷贝出口` | M | 是 |
@@ -177,6 +186,8 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-8 | 任务清单每项可独立验收（6.6 T-6） | 逐项跑各自 `verify` |
 | E-9 | README 含 M-1 七条所有权契约与 §3 公开 API 清单 | 人工逐条核对 |
 | E-10 | R-1 七条：缺失/重键/满/init/首条生效逐条有夹具断言 | `bash test/run.sh s8_registry` |
+| E-11 | R-2 五条：未设置、`retry: 0`、跨事件保持、reset 保留逐条有夹具断言 | `bash test/run.sh s3_retry_zero` |
+| E-12 | `max_line_bytes(n)` 的 `n` 是内容字节上限：恰好 `n` 字节通过、`n+1` 字节报错（以 `n=4096` 写死） | `bash test/run.sh s5_limits` |
 
 ## 7 非目标
 
@@ -189,3 +200,5 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 2026-11-15 | 首版冻结；相对提案修正 WHATWG W10、retry 0 值、静态工厂、行上限、分期 | S0-facts、S0-battle |
 | 2026-11-15 | S6/S7 重切：原 S6（reset/finish）的行为已在 S1/S4/S5 落地，无独立红证可出；copy/free 移到 S6，README/集成样例移到 S7 | T-7 红证要求；E-5 需 copy 夹具 |
 | 2026-11-15 | 新增 S8：负责人指定「注册表方法返回宿主自身」形态；实测 struct 按值返回可用，int 宿主无法承载注册表状态，故用 struct 宿主，保留 `sse_parser_new` 作为构造器函数值 | [S8-int-host](../reviews/S8-int-host.md)、`s8_registry` |
+| 2026-11-15 | 第 4 题裁定：parser 的 retry 拆为 `has_retry()` + `retry_hint()`；`retry: 0` 为已设置；未设置时 hint 返回值不构成契约 | `s3_retry_zero`、R-2 |
+| 2026-11-15 | 第 5 题裁定：`max_line_bytes(n)` 的 `n` 是内容字节上限（非含 NUL 容量）；恰好 `n` 合法、`n+1` 报错，判据以 `n=4096` 写死 | `s5_limits`、E-12 |
