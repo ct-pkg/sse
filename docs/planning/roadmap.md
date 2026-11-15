@@ -109,9 +109,10 @@
 | 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH |
 | 发版前置 | 全部单包夹具绿；集成门禁绿；零警告；API 与 S0 卡 §3 一致；CHANGELOG 完整 |
 | tag | 每个 phase 收口一个 annotated tag `v<version>`；**由 USER 在发版时执行** |
-| push | 分支与 tag 的推送、远端发布**由 USER 执行**；本仓库当前只做本地提交 |
-| 现在不做 | 不打 tag、不 push、不对外发布；集成门禁的 `ct get` 失败先登记，不绕过 |
-| 发布 tag | 见 [backlog](backlog.md) 第 2 项：包清单的发布者/命名根落地后，由 owner 打 annotated tag；现在不打 |
+| push | 分支推送需 owner 明确授权；tag 与远端发布由 USER 执行 |
+| 现在不做 | 不打 tag；分支 push 仅在明确授权时执行（本轮文档提交已授权）；集成门禁的 `ct get` 失败先登记，不绕过 |
+| 包清单 | 见 [backlog](backlog.md) 第 1 项：发布者/命名根能力已可用，可立即核对并验收 |
+| 发布 tag | 见 [backlog](backlog.md) 第 2 项：包清单验收后，由 owner 打 annotated tag；现在不打 |
 
 ## 5 与提案 S0–S7 的差异
 
@@ -179,4 +180,4 @@ $ bash test/integration.sh   # 0 通过、1 失败、2 前置条件缺失
 | G-3 | `ct`/`ct-ast` 等价性未证 | 第二个前端不可用；不把数量计入门禁通过 |
 | G-4 | 块内残留长度不可观测 | 第 12 题裁定不加接口；由计数快照+行为断言覆盖 |
 | G-5 | 第 9/10 题裁定未留档 | 不代拟；补齐后补评估表，不单独成片 |
-| G-6 | 打包与发版待办 | 不新增 phase；等待条件与验收见 [backlog](backlog.md) |
+| G-6 | 打包与发版待办 | 不新增 phase；包清单已可开工，tag 待其验收；见 [backlog](backlog.md) |
