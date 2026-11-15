@@ -1,0 +1,48 @@
+/*
+ * S1: construction, queries, Drop, terminal-state plumbing.
+ *
+ * What is frozen for this phase (S0 card §3/§4):
+ *   - sse_parser_new() returns a live instance (0 on OOM, not reachable here)
+ *   - has_error() is 0, error_msg() is NULL, last_event_id() is NULL,
+ *     retry_hint() is -1 on a fresh parser
+ *   - finish() marks the stream finished; a second finish() answers -1
+ *   - feed() after finish() answers -1 and records "parser finished"
+ *   - reset() clears the error/finished state
+ *   - delete runs Drop without crashing
+ */
+import sse::sse;
+
+#include <stdio.h>
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int feed_after;
+    int err_after;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+
+    printf("err=%d msg_null=%d id_null=%d retry=%d\n",
+           p->has_error(), p->error_msg() == 0,
+           p->last_event_id() == 0, p->retry_hint());
+
+    printf("feed=%d\n", p->feed("data: x\n\n", 9));
+    printf("finish=%d\n", p->finish());
+    printf("finish2=%d\n", p->finish());
+
+    feed_after = p->feed("data: y\n\n", 9);
+    err_after = p->has_error();
+    printf("feed_after=%d err=%d msg=%s\n", feed_after, err_after,
+           p->error_msg());
+
+    p->reset();
+    printf("after_reset err=%d msg_null=%d\n",
+           p->has_error(), p->error_msg() == 0);
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

@@ -1,0 +1,7 @@
+err=0 msg_null=1 id_null=1 retry=-1
+feed=0
+finish=0
+finish2=-1
+feed_after=-1 err=1 msg=parser finished
+after_reset err=0 msg_null=1
+deleted
