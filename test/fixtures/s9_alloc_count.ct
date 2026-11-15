@@ -1,0 +1,128 @@
+/*
+ * S9: alloc/free counter invariant across three chunking strategies.
+ *
+ * The stub counts successful allocations and frees. At the end of every run
+ * (parser deleted) the two must match and nothing may stay outstanding.
+ * This only shows that whole buffers are not leaked; it cannot see wild
+ * pointers or out-of-bounds writes, and it is not a LeakSanitizer substitute.
+ *
+ * The "random" split is a fixed-seed pseudo-random size sequence: real TCP
+ * break points cannot be enumerated here.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "test/sse_alloc_hook.h"
+
+static int g_allocs = 0;
+static int g_frees = 0;
+static int g_live = 0;
+static int g_bytes = 0;
+
+static char stream[] = ": keepalive\nretry: 1500\nid: 7\nevent: tick\n"
+                       "data: a\ndata: b\n\ndata: c\n\n";
+
+static void *t_alloc(size_t n)
+{
+    void *p = malloc(n);
+    if (p != 0) {
+        g_allocs = g_allocs + 1;
+        g_live = g_live + 1;
+    }
+    return p;
+}
+
+static void t_free(void *p)
+{
+    if (p == 0) return;
+    g_frees = g_frees + 1;
+    g_live = g_live - 1;
+    free(p);
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    g_bytes = g_bytes + ev->data_len;
+    return 0;
+}
+
+static void reset_counts(void)
+{
+    g_allocs = 0;
+    g_frees = 0;
+    g_live = 0;
+    g_bytes = 0;
+}
+
+static SseParser *open_parser(int *n)
+{
+    SseParser *p = sse::sse_parser_new();
+    p->on_event(on_ev, n);
+    return p;
+}
+
+static void report(char *mode, int n, int len)
+{
+    int equal = g_allocs == g_frees && g_live == 0;
+    printf("%s events=%d bytes=%d len=%d allocs=%d frees=%d live=%d equal=%d\n",
+           mode, n, g_bytes, len, g_allocs, g_frees, g_live, equal);
+}
+
+int main(void)
+{
+    SseParser *p;
+    int len;
+    int n;
+    int off;
+    int step;
+    int seed;
+    int rc;
+
+    sse_test_alloc_hook(t_alloc, t_free);
+    len = (int)strlen(stream);
+
+    /* whole block */
+    reset_counts();
+    n = 0;
+    p = open_parser(&n);
+    rc = p->feed(stream, len);
+    sse::sse_parser_free(p);
+    report("whole", n, rc);
+
+    /* byte by byte */
+    reset_counts();
+    n = 0;
+    off = 0;
+    rc = 0;
+    p = open_parser(&n);
+    while (off < len) {
+        rc = rc + p->feed(stream + off, 1);
+        off = off + 1;
+    }
+    sse::sse_parser_free(p);
+    report("byte", n, rc);
+
+    /* fixed-seed pseudo-random chunks of 1..7 bytes */
+    reset_counts();
+    n = 0;
+    off = 0;
+    rc = 0;
+    seed = 12345;
+    p = open_parser(&n);
+    while (off < len) {
+        seed = (seed * 1103 + 12345) % 100003;
+        step = (seed % 7) + 1;
+        if (off + step > len) step = len - off;
+        rc = rc + p->feed(stream + off, step);
+        off = off + step;
+    }
+    sse::sse_parser_free(p);
+    report("random", n, rc);
+
+    return 0;
+}

@@ -1,0 +1,149 @@
+/*
+ * S9: injectable allocator and the OOM paths.
+ *
+ * A test stub replaces the package's internal alloc/free pointers at runtime
+ * (failure count is a runtime value, never a compile-time switch). Each
+ * scenario arms "the next allocation fails"; feed() must answer -1, set
+ * has_error() with "out of memory", and leave no successful allocation
+ * unmatched after delete. That proves whole-buffer release only: macOS ASan
+ * has no LeakSanitizer, so it is not a leak verdict.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "test/sse_alloc_hook.h"
+
+static int g_calls = 0;
+static int g_live = 0;
+static int g_fail_at = 0;
+static int g_take_snap = 0;
+static SseEvent *g_snap = 0;
+
+static void *t_alloc(size_t n)
+{
+    void *p;
+    g_calls = g_calls + 1;
+    if (g_fail_at > 0 && g_calls == g_fail_at) return 0;
+    p = malloc(n);
+    if (p != 0) g_live = g_live + 1;
+    return p;
+}
+
+static void t_free(void *p)
+{
+    if (p == 0) return;
+    g_live = g_live - 1;
+    free(p);
+}
+
+static void arm_next(void)
+{
+    g_fail_at = g_calls + 1;
+}
+
+static void disarm(void)
+{
+    g_fail_at = 0;
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    if (g_take_snap != 0) g_snap = sse::sse_event_copy(ev);
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *nul;
+    SseParser *p;
+    SseEvent *snap;
+    int n = 0;
+    int rc;
+    int i;
+    char cmt[202];
+    char dl[108];
+
+    sse_test_alloc_hook(t_alloc, t_free);
+
+    /* 1: the parser allocation itself fails */
+    arm_next();
+    nul = sse::sse_parser_new();
+    printf("new_oom=%d live=%d\n", nul == 0, g_live);
+    disarm();
+
+    /* 2: the first buffer allocation of a feed fails */
+    p = sse::sse_parser_new();
+    p->on_event(on_ev, &n);
+    arm_next();
+    rc = p->feed("data: x\n\n", 9);
+    printf("feed_oom=%d err=%d msg=%s live=%d\n",
+           rc, p->has_error(), p->error_msg(), g_live);
+    disarm();
+
+    p->reset();
+    rc = p->feed("data: y\n\n", 9);
+    printf("recover=%d err=%d events=%d live=%d\n",
+           rc, p->has_error(), n, g_live);
+
+    /* 3: grow the line buffer first, then fail the data buffer growth */
+    cmt[0] = ':';
+    i = 1;
+    while (i < 200) {
+        cmt[i] = 'c';
+        i = i + 1;
+    }
+    cmt[200] = '\n';
+    cmt[201] = '\n';
+    p->feed(cmt, 202);
+
+    dl[0] = 'd';
+    dl[1] = 'a';
+    dl[2] = 't';
+    dl[3] = 'a';
+    dl[4] = ':';
+    dl[5] = ' ';
+    i = 6;
+    while (i < 106) {
+        dl[i] = 'z';
+        i = i + 1;
+    }
+    dl[106] = '\n';
+    dl[107] = '\n';
+
+    arm_next();
+    rc = p->feed(dl, 108);
+    printf("data_oom=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
+    disarm();
+
+    p->reset();
+    rc = p->feed(dl, 108);
+    printf("data_recover=%d err=%d events=%d\n", rc, p->has_error(), n);
+
+    /* 4: sse_event_copy fails inside the callback */
+    g_snap = 0;
+    g_take_snap = 1;
+    arm_next();
+    rc = p->feed("data: q\n\n", 9);
+    g_take_snap = 0;
+    printf("copy_oom rc=%d snap_null=%d events=%d\n",
+           rc, g_snap == 0, n);
+
+    disarm();
+    g_snap = 0;
+    g_take_snap = 1;
+    rc = p->feed("data: r\n\n", 9);
+    g_take_snap = 0;
+    snap = g_snap;
+    printf("copy_ok rc=%d snap=%d data=[%s]\n",
+           rc, snap != 0, snap != 0 ? snap->data : "-");
+    sse::sse_event_free(snap);
+
+    sse::sse_parser_free(p);
+    printf("live_after_delete=%d\n", g_live);
+    return 0;
+}

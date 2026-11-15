@@ -37,10 +37,10 @@ case "$task" in
     *) [ -f "$fixtures/$task.expected.out" ] || fail "no expected output" ;;
 esac
 
-cflags="-Wall -Wextra -Werror"
+cflags="-I $repo -Wall -Wextra -Werror"
 ldflags=""
 if [ "${ASAN:-0}" = "1" ]; then
-    cflags="-g -fsanitize=address $cflags"
+    cflags="-g -fsanitize=address -I $repo -Wall -Wextra -Werror"
     ldflags="-fsanitize=address"
 fi
 
