@@ -1,0 +1,63 @@
+/*
+ * S7: integration shape. A transport (ct-http-style chunk callback) pushes
+ * bytes into the parser; the parser callback counts events. This is a
+ * regression example for the documented call pattern, not new behavior.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static SseParser *g_parser = 0;
+static int g_events = 0;
+static int g_transport_error = 0;
+
+static int on_event(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("event=%s len=%d data=%s\n", ev->event, ev->data_len, ev->data);
+    return 0;
+}
+
+/* Mirrors ct-http: a non-negative return keeps the transfer going. */
+static int on_body(char *chunk, int len)
+{
+    int fired = g_parser->feed(chunk, len);
+    if (fired < 0) {
+        g_transport_error = 1;
+        return -1;
+    }
+    return 0;
+}
+
+int main(void)
+{
+    char *chunks[3];
+    int i;
+
+    g_parser = sse::sse_parser_new();
+    if (g_parser == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    g_parser->on_event(on_event, &g_events);
+
+    chunks[0] = "\xEF\xBB\xBF" "event: token\ndata: hel";
+    chunks[1] = "lo\n\n";
+    chunks[2] = ": keepalive\ndata: world\n\n";
+
+    for (i = 0; i < 3; i++) {
+        if (on_body(chunks[i], (int)strlen(chunks[i])) < 0) {
+            printf("transport aborted at %d\n", i);
+            break;
+        }
+    }
+
+    printf("events=%d transport_error=%d parser_error=%d\n",
+           g_events, g_transport_error, g_parser->has_error());
+
+    delete g_parser;
+    printf("deleted\n");
+    return 0;
+}

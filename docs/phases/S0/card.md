@@ -151,7 +151,7 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | E-2 | `feed`/`finish`/`reset` 的 F-1–F-3 契约逐条有正例或负例 | 同上 |
 | E-3 | 错误文本按 X-1 精确比对 | `bash test/run.sh s5_limits` |
 | E-4 | 生成头导出的符号与本卡 §3 清单完全一致（不多不少） | `nm`/`grep` 比对生成 `.h` |
-| E-5 | 借用负例在 ASan 下报 heap-use-after-free；copy 正例无泄漏 | `ASAN=1 bash test/run.sh s6_copy` |
+| E-5 | 借用负例在 ASan 下报 heap-use-after-free；copy 正例无泄漏 | `ASAN=1 bash test/run.sh s6_borrow_uaf`；`ASAN=1 bash test/run.sh s6_copy` |
 | E-6 | 构建零警告（`-Wall -Wextra -Werror`，且 ct 自身无 warning） | `test/run.sh` 对 stderr 检查 |
 | E-7 | 不依赖静态固有方法 / errdefer / 链式调用（可 grep 核对） | `grep -n` 本卡 §2 三个禁用形态 |
 | E-8 | 任务清单每项可独立验收（6.6 T-6） | 逐项跑各自 `verify` |

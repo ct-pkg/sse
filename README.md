@@ -1,14 +1,168 @@
-# sse
+# ct-sse
 
-SSE（Server-Sent Events）解析包。
+WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
 
-- 状态：**分析阶段完成，未立项**。
-- 文档先落库，代码待立项后开。
+- Parses the event-stream format (HTML §9.2.6), including the stream-initial BOM.
+- Does **not** do HTTP, LLM protocol semantics, reconnect policy, or routing.
+- Depends only on `<stdlib.h>` / `<string.h>` / `<stdarg.h>` / `<stdio.h>`.
+- Frozen contract: [docs/phases/S0/card.md](docs/phases/S0/card.md).
+  Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
+  [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-## 文档
+Requires CT v0.53.0 (`ct --version`). Package version: 0.6.0.
 
-- [需求规约](docs/requirements.md)
-- [提案原文](docs/proposal.md)
-- [分析结论](docs/analysis.md)
-- [设计待决项](docs/design.md)
-- [会话映射](docs/session-map.md)
+## Layout
+
+```
+ct.pkg                 package manifest
+sse/sse.h.ct           namespace sse; public types + methods + Drop
+test/run.sh            build/run one fixture, diff expected output
+test/fixtures/*.ct     behavior locks (s1 ... s7)
+docs/                  proposal, requirements, S0 contract, reviews
+```
+
+## Use
+
+```ct
+import sse::sse;
+
+static int on_event(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("%.*s\n", ev->data_len, ev->data);
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int n = 0;
+    int rc;
+
+    p->on_event(on_event, &n);
+    rc = p->feed("event: token\ndata: hello\n\n", 26);
+    if (rc < 0) { /* p->error_msg() is set; stop the transport */ }
+    delete p;
+    return 0;
+}
+```
+
+Build a program that imports the package:
+
+```console
+$ ct build app.ct -I /path/to/ct-sse -o app --cflags "-Wall -Wextra -Werror"
+```
+
+## Public API
+
+Types: `SseEvent`, `SseEventCb`, `SseParser` (see the S0 card §3 for field-level
+meaning). Everything else in `sse/sse.h.ct` is private.
+
+| Symbol | Meaning |
+| --- | --- |
+| `SseParser *sse_parser_new(void)` | allocate a parser; `0` on OOM |
+| `SseEvent *sse_event_copy(SseEvent *ev)` | deep copy of a borrow view; `0` on OOM |
+| `void sse_event_free(SseEvent *ev)` | free a copy (never a view) |
+| `ev->has_id()`, `ev->has_retry()`, `ev->is_message()` | field predicates |
+| `p->on_event(cb, ud)` | register/clear the callback |
+| `p->max_line_bytes(n)` | content-byte limit (default 65536); `n <= 0` is rejected |
+| `p->feed(chunk, len)` | bytes in; returns events fired this call, or `-1` |
+| `p->finish()` | mark EOF and discard pending bytes per WHATWG |
+| `p->has_error()`, `p->error_msg()` | terminal error state / text |
+| `p->last_event_id()` | persistent last event id, `0` when cleared |
+| `p->retry_hint()` | persistent retry hint, `-1` when never set |
+| `p->reset()` | clear transient state for a new stream |
+
+`ev->retry` is `-1` when the stream never sent `retry`; `retry: 0` is a real
+value. `ev->id` is `0` when the last event id buffer is empty.
+
+## Contract in one page
+
+### feed / finish / reset
+
+- `feed` returns the number of callbacks fired **during this call**.
+- Any fatal condition returns `-1`, sets `has_error()`, and enters a terminal
+  state: later `feed`/`finish` answer `-1` until `reset()`.
+- A callback returning non-zero aborts the feed (`error_msg()` is
+  `callback aborted`); bytes after the abort are not parsed.
+- `finish()` is WHATWG EOF: pending lines and pending data are **discarded**,
+  never dispatched. `feed` after `finish` answers `-1` (`parser finished`).
+- `reset()` clears buffers/errors/finished and re-arms BOM handling; it keeps
+  the last event id, the retry hint, the callback, and the line limit.
+
+### Errors
+
+| Condition | `error_msg()` |
+| --- | --- |
+| line exceeds the limit | `SSE line exceeds <n> bytes` |
+| allocation failure | `out of memory` |
+| callback returned non-zero | `callback aborted` |
+| `feed` after `finish` | `parser finished` |
+
+Protocol-level oddities (unknown fields, invalid `retry`, comments, an `id`
+containing NUL) are ignored and do **not** set an error.
+
+### WHATWG rules implemented
+
+1. CRLF, CR, and LF line endings, including CRLF split across feeds.
+2. `:`-prefixed lines are comments.
+3. First `:` splits field/value; one leading space is removed; no-colon lines
+   have an empty value; unknown fields are ignored.
+4. Each `data` appends its value plus LF; dispatch removes exactly one LF.
+5. A block without any `data` field does not dispatch; `data:` fires an empty
+   data event.
+6. `event` defaults to `message` when absent or empty; it is cleared after
+   every dispatch, including blocks without data.
+7. `id` persists across events, an empty value clears it, a value containing
+   NUL is ignored, and the value is captured at dispatch time.
+8. `retry` accepts only non-empty ASCII digits; `0` is legal; invalid or
+   overflowing values are ignored; the value persists.
+9. One stream-initial `EF BB BF` is ignored, even when split across feeds.
+10. EOF discards pending data (see `finish`).
+
+### Ownership
+
+1. `ev`, `ev->event`, `ev->data`, `ev->id` are valid until the callback returns.
+2. They are also invalidated by the next `feed`/`finish`/`reset`/`delete`.
+3. To keep an event beyond that, call `sse_event_copy` and `sse_event_free`.
+4. A callback must not free/delete any field or the parser.
+5. `ud` belongs to the caller; the parser only borrows it.
+6. After `delete parser`, every uncopied view pointer is dangling.
+7. `sse_event_free` accepts only the result of `sse_event_copy`.
+
+## CT v0.53.0-specific notes
+
+These are language facts, not preferences (probes in `docs/reviews/S0-facts.md`):
+
+- Static inherent methods are unusable inside a `namespace` unit, so the
+  constructor is the free function `sse_parser_new()`.
+- Methods in `impl` have no forward declaration: helpers are defined before
+  their callers.
+- A private method whose name starts with `_` cannot be called
+  (`no method '_x'`); private fields may start with `_`. This package uses no
+  leading underscore on method names.
+- `errdefer` is rejected in `.h.ct` units, so errors use `int` returns plus
+  `error_msg()`.
+- A method result cannot be the receiver of the next call: assign each step to
+  a variable instead of writing `p->a()->b()`.
+- `MAX_CALLS` (1024) counts direct call sites across all units of one
+  `ct build`, not per unit. Splitting the package does not raise it.
+
+## Tests
+
+```console
+$ bash test/run.sh s1_construct
+$ bash test/run.sh s2_basic
+$ bash test/run.sh s3_fields
+$ bash test/run.sh s4_chunk
+$ bash test/run.sh s5_limits
+$ bash test/run.sh s5_abort
+$ bash test/run.sh s6_copy
+$ ASAN=1 bash test/run.sh s6_copy
+$ ASAN=1 bash test/run.sh s6_borrow_uaf
+$ bash test/run.sh s7_integration
+```
+
+Every fixture is built with `-Wall -Wextra -Werror`; the runner fails on any
+`warning:` line, on a nonzero exit, or on an output diff.

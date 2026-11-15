@@ -1,0 +1,4 @@
+event=token len=5 data=hello
+event=message len=5 data=world
+events=2 transport_error=0 parser_error=0
+deleted
