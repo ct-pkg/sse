@@ -1,0 +1,85 @@
+/*
+ * S8: the value-returning registry the owner specified.
+ *
+ *   SseRegistry base;
+ *   SseRegistry reg = base.reg("parser", sse_parser_new);
+ *   SseParser *p = reg.make("parser");
+ *
+ * Missing key -> NULL and err=1. Duplicate key -> first registration wins,
+ * err=2, count unchanged. Capacity 8 -> err=3. init() resets a host.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+
+static int g_a = 0;
+static int g_d1 = 0;
+static int g_d2 = 0;
+
+static SseParser *ctor_a(void)
+{
+    g_a = g_a + 1;
+    return sse::sse_parser_new();
+}
+
+static SseParser *ctor_d1(void)
+{
+    g_d1 = g_d1 + 1;
+    return sse::sse_parser_new();
+}
+
+static SseParser *ctor_d2(void)
+{
+    g_d2 = g_d2 + 1;
+    return sse::sse_parser_new();
+}
+
+static SseRegistry g_base;
+
+int main(void)
+{
+    SseRegistry reg = g_base.reg("parser", ctor_a);
+    SseParser *p = reg.make("parser");
+    int calls_a = g_a;
+    int err = reg.error();
+    int size = reg.size();
+
+    printf("hit=%d calls_a=%d err=%d size=%d\n", p != 0, calls_a, err, size);
+
+    SseParser *q = reg.make("nope");
+    printf("miss=%d err=%d\n", q == 0, reg.error());
+
+    reg = reg.reg("dup", ctor_d1);
+    reg = reg.reg("dup", ctor_d2);
+    SseParser *d = reg.make("dup");
+    printf("dup=%d d1=%d d2=%d size=%d err=%d\n",
+           d != 0, g_d1, g_d2, reg.size(), reg.error());
+
+    reg = reg.reg("n0", ctor_a);
+    reg = reg.reg("n1", ctor_a);
+    reg = reg.reg("n2", ctor_a);
+    reg = reg.reg("n3", ctor_a);
+    reg = reg.reg("n4", ctor_a);
+    reg = reg.reg("n5", ctor_a);
+    reg = reg.reg("n6", ctor_a);
+    printf("full_size=%d err=%d\n", reg.size(), reg.error());
+
+    reg = reg.init();
+    printf("after_init=%d,%d\n", reg.size(), reg.error());
+    SseParser *z = reg.make("parser");
+    printf("after_init_miss=%d err=%d\n", z == 0, reg.error());
+
+    SseRegistry local;
+    SseRegistry clean = local.init();
+    clean = clean.reg("x", ctor_a);
+    SseParser *lp = clean.make("x");
+    printf("local_hit=%d size=%d err=%d\n",
+           lp != 0, clean.size(), clean.error());
+
+    delete p;
+    delete d;
+    delete lp;
+    printf("deleted\n");
+    return 0;
+}

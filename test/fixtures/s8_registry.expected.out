@@ -1,0 +1,8 @@
+hit=1 calls_a=1 err=0 size=1
+miss=1 err=1
+dup=1 d1=1 d2=0 size=2 err=0
+full_size=8 err=3
+after_init=0,0
+after_init_miss=1 err=1
+local_hit=1 size=1 err=0
+deleted
