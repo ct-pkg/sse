@@ -1,5 +1,6 @@
 namespace sse;
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,15 +58,160 @@ pub struct SseParser {
     char bom_buf[3];
     int bom_len;
     char error_msg[128];
-    SseEventCb on_event;
-    void *on_event_ud;
+    SseEventCb cb;
+    void *ud;
     SseEvent current;
 } use Drop;
 
+/* Record a fatal error and answer -1 for the caller's return path. */
+static int sse_set_error(SseParser *p, char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(p->error_msg, sizeof(p->error_msg), fmt, ap);
+    va_end(ap);
+    p->error = 1;
+    return -1;
+}
+
+static int sse_reserve(char **buf, int *cap, int need)
+{
+    char *nb;
+    int nc;
+    if (need <= *cap) return 0;
+    nc = *cap > 0 ? *cap : 32;
+    while (nc < need) nc = nc * 2;
+    nb = realloc(*buf, (size_t)nc);
+    if (nb == 0) return -1;
+    *buf = nb;
+    *cap = nc;
+    return 0;
+}
+
+static int sse_push_char(char **buf, int *len, int *cap, char c)
+{
+    if (sse_reserve(buf, cap, *len + 1) < 0) return -1;
+    (*buf)[*len] = c;
+    *len = *len + 1;
+    return 0;
+}
+
+static int sse_push_str(char **buf, int *len, int *cap, char *s, int n)
+{
+    if (n <= 0) return 0;
+    if (sse_reserve(buf, cap, *len + n) < 0) return -1;
+    memcpy(*buf + *len, s, (size_t)n);
+    *len = *len + n;
+    return 0;
+}
+
 impl SseParser {
-    pub int on_event(SseEventCb cb, void *ud) {
-        self->on_event = cb;
-        self->on_event_ud = ud;
+    /* Helpers first: impl methods have no forward declarations. */
+    int dispatch_event() {
+        int r = 0;
+
+        if (self->has_data == 0) {
+            self->event_len = 0;
+            return 0;
+        }
+        if (self->data_len > 0 && self->data_buf[self->data_len - 1] == '\n')
+            self->data_len = self->data_len - 1;
+        if (self->data_buf != 0) self->data_buf[self->data_len] = 0;
+
+        self->current.event = "message";
+        self->current.data = self->data_buf;
+        self->current.data_len = self->data_len;
+        self->current.id = 0;
+        self->current.retry = -1;
+
+        if (self->cb != 0)
+            r = self->cb(&self->current, self->ud);
+
+        self->data_len = 0;
+        self->event_len = 0;
+        self->has_data = 0;
+
+        if (r != 0) return sse_set_error(self, "callback aborted");
+        return 1;
+    }
+
+    int handle_field(char *field, int field_len, char *value, int value_len) {
+        if (field_len == 4 && strncmp(field, "data", 4) == 0) {
+            if (sse_push_str(&self->data_buf, &self->data_len,
+                             &self->data_cap, value, value_len) < 0)
+                return sse_set_error(self, "out of memory");
+            if (sse_push_char(&self->data_buf, &self->data_len,
+                              &self->data_cap, '\n') < 0)
+                return sse_set_error(self, "out of memory");
+            self->has_data = 1;
+            return 0;
+        }
+        return 0;
+    }
+
+    int process_line() {
+        int i = 0;
+        int colon = -1;
+        char *field;
+        char *value;
+        int field_len;
+        int value_len;
+        int r;
+
+        if (self->line_len == 0) return self->dispatch_event();
+        if (self->line_buf[0] == ':') {
+            self->line_len = 0;
+            return 0;
+        }
+        while (i < self->line_len) {
+            if (self->line_buf[i] == ':') {
+                colon = i;
+                break;
+            }
+            i = i + 1;
+        }
+        if (colon < 0) {
+            field = self->line_buf;
+            field_len = self->line_len;
+            value = self->line_buf + self->line_len;
+            value_len = 0;
+        } else {
+            field = self->line_buf;
+            field_len = colon;
+            value = self->line_buf + colon + 1;
+            value_len = self->line_len - colon - 1;
+            if (value_len > 0 && value[0] == ' ') {
+                value = value + 1;
+                value_len = value_len - 1;
+            }
+        }
+        r = self->handle_field(field, field_len, value, value_len);
+        self->line_len = 0;
+        return r;
+    }
+
+    int consume(char c) {
+        if (c == '\r') {
+            self->saw_cr = 1;
+            return self->process_line();
+        }
+        if (c == '\n') {
+            if (self->saw_cr != 0) {
+                self->saw_cr = 0;
+                return 0;
+            }
+            return self->process_line();
+        }
+        self->saw_cr = 0;
+        if (sse_push_char(&self->line_buf, &self->line_len,
+                          &self->line_cap, c) < 0)
+            return sse_set_error(self, "out of memory");
+        return 0;
+    }
+
+    pub int on_event(SseEventCb fn, void *user) {
+        self->cb = fn;
+        self->ud = user;
         return 0;
     }
 
@@ -76,8 +222,10 @@ impl SseParser {
     }
 
     pub int feed(char *chunk, int len) {
-        (void)chunk;
-        (void)len;
+        int i = 0;
+        int fired = 0;
+        int r;
+
         if (self->error) return -1;
         if (self->finished) {
             self->error = 1;
@@ -85,7 +233,15 @@ impl SseParser {
                      "parser finished");
             return -1;
         }
-        return 0;
+        if (chunk == 0 || len <= 0) return 0;
+
+        while (i < len) {
+            r = self->consume(chunk[i]);
+            if (r < 0) return -1;
+            fired = fired + r;
+            i = i + 1;
+        }
+        return fired;
     }
 
     pub int finish() {

@@ -29,7 +29,6 @@ int main(void)
            p->has_error(), p->error_msg() == 0,
            p->last_event_id() == 0, p->retry_hint());
 
-    printf("feed=%d\n", p->feed("data: x\n\n", 9));
     printf("finish=%d\n", p->finish());
     printf("finish2=%d\n", p->finish());
 

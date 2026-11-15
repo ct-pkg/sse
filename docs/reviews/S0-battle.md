@@ -50,7 +50,7 @@
   | --- | --- | --- |
   | S0 | 契约冻结 | 本卡 + 事实报告 + battle 报告 |
   | S1 | 类型/构造/Drop/错误查询骨架 | 构造、查询、`delete`（ASan） |
-  | S2 | 行切分 + 字段解析 + data 事件分发（最小闭环） | WHATWG 基本例 1 事件、`data_len==11` |
+  | S2 | 行切分 + 字段解析 + data 事件分发（最小闭环） | WHATWG 基本例 1 事件、`data_len==10` |
   | S3 | event/id/retry 语义与 dispatch 清空 | 字段真值表用例 |
   | S4 | 跨 chunk 半行、CRLF/CR 跨分片、BOM | 逐字节 feed 与整块 feed 序列一致 |
   | S5 | 行上限、终止态、OOM 分支 | 边界 n-1/n/n+1 与 -1 后幂等 |
