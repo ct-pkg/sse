@@ -1,0 +1,68 @@
+/*
+ * S4: chunk boundaries and the stream-initial BOM.
+ *
+ * A line may be split anywhere, including between CR and LF. The BOM may be
+ * split across feeds; a non-BOM first byte must be replayed rather than
+ * dropped. A null/empty chunk is a no-op.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d len=%d data=[%s]\n", *n, ev->data_len, ev->data);
+    return 0;
+}
+
+static void feed_str(SseParser *p, char *s)
+{
+    p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char *bytewise = "data: hello\n\n";
+    char *bom_together = "\xEF\xBB\xBF" "data: d\n\n";
+    int n = 0;
+    int i;
+    int rc;
+    char ef = (char)0xEF;
+    char bb = (char)0xBB;
+    char bf = (char)0xBF;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    for (i = 0; bytewise[i] != 0; i++)
+        p->feed(bytewise + i, 1);
+
+    feed_str(p, "data: a\r");
+    feed_str(p, "\n\r\n");
+    feed_str(p, "data: b\r\r");
+    feed_str(p, "data: c\n\n");
+
+    feed_str(p, bom_together);
+
+    p->feed(&ef, 1);
+    p->feed(&bb, 1);
+    p->feed(&bf, 1);
+    feed_str(p, "data: e\n\n");
+
+    p->feed(bytewise, 1);              /* 'd', not a BOM: must be replayed */
+    feed_str(p, "ata: h\n\n");
+
+    rc = p->feed(0, 0);
+    printf("null_feed=%d n=%d err=%d\n", rc, n, p->has_error());
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}
