@@ -1,0 +1,66 @@
+/*
+ * S5: per-line byte limit and the terminal error state.
+ *
+ * max_line_bytes(n) counts content bytes: a line of exactly n bytes is
+ * accepted, the (n+1)-th byte fails the feed. A failed feed is terminal:
+ * later feeds answer -1 until reset(), which keeps the configured limit.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d data=[%s]\n", *n, ev->data);
+    return 0;
+}
+
+static int feed_str(SseParser *p, char *s)
+{
+    return p->feed(s, (int)strlen(s));
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    int n = 0;
+    int rc;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    printf("set=%d\n", p->max_line_bytes(8));
+    printf("bad_set=%d\n", p->max_line_bytes(0));
+
+    printf("feed=%d\n", feed_str(p, "data: ab\n\n"));
+
+    rc = feed_str(p, "data: abc\n\n");
+    printf("over=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
+
+    rc = feed_str(p, "data: x\n\n");
+    printf("after=%d err=%d\n", rc, p->has_error());
+
+    p->reset();
+    printf("feed2=%d\n", feed_str(p, "data: ab\n\n"));
+
+    p->reset();
+    rc = feed_str(p, "12345678\n\n");
+    printf("exact8=%d err=%d\n", rc, p->has_error());
+
+    p->reset();
+    rc = feed_str(p, "123456789\n\n");
+    printf("over9=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
+
+    p->reset();
+    printf("feed3=%d\n", feed_str(p, "data: ok\n\n"));
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

@@ -1,0 +1,13 @@
+set=0
+bad_set=-1
+e1 data=[ab]
+feed=1
+over=-1 err=1 msg=SSE line exceeds 8 bytes
+after=-1 err=1
+e2 data=[ab]
+feed2=1
+exact8=0 err=0
+over9=-1 err=1 msg=SSE line exceeds 8 bytes
+e3 data=[ok]
+feed3=1
+deleted
