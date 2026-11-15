@@ -42,10 +42,10 @@
 - 会话到产物的映射：[session-map.md](session-map.md)
 - 工程规范：[spec/ai-coding-workflow.md](spec/ai-coding-workflow.md)
 
-## 5 包外转入事项
+## 5 本仓待办与已决事项
 
-- [planning/external-items.md](planning/external-items.md)：EXT-SSE-01/02/03 的认领、前置能力、
-  验收方式与待决项（不改变契约与版本）。
+- [planning/backlog.md](planning/backlog.md)：包清单的发布者/命名根、发布 tag、构造形态决定，
+  以及各自的等待条件与验收方式。
 
 ## 6 门禁入口
 
