@@ -1,0 +1,10 @@
+pending rc=0 n=0
+finish=0 n=0 add_blocks=0 add_bytes=0
+blocked rc=-1 err=1 msg=parser finished n=0
+e1 data=[fresh] len=5 msg=1 id=- has_retry=0
+fresh rc=1 n=1
+partial_retry_has=0
+partial_id_null=1
+e2 data=[z] len=1 msg=1 id=- has_retry=0
+after_stale rc=1 n=2
+live blocks=0 bytes=0

@@ -118,6 +118,14 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 2. 回调在调用 `feed` 的线程上**同步**触发；包内无锁、无原子操作。
 3. 替换 alloc/free 指针是进程级操作，必须在并发使用前完成。
 
+### A-2 可观测性边界（第 12 题裁定）
+
+1. **不提供只读视察接口**：不为测试在产品里开口子，生成头不增加查询/调试方法。
+2. `finish()` 的清理只用两类证据：分配计数快照（`finish` 前后未释放块数与字节数不增，销毁后归零）
+   与行为断言（之后 `feed` 不再触发事件、`reset` 后重喂不带旧内容）。
+3. 块内残留长度（`line_len` / `data_len` / `event_len`）**不可观测**：计数器只看分配块大小，
+   在不加接口的前提下无法直接断言；登记为不可观测，只由行为用例覆盖。不得用内部字段绕过。
+
 ### W-1 WHATWG 十条（唯一合规清单）
 
 | # | 冻结口径 |
@@ -185,7 +193,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | S6 | `sse_event_copy`/`sse_event_free` + `s6_copy` 夹具 | `bash test/run.sh s6_copy` | `feat(sse): S6 拷贝出口` | M | 是 |
 | S7 | README + 集成样例 + `s7_integration` 夹具 | `bash test/run.sh s7_integration` | `test(sse): S7 示例与文档` | S | 是 |
 | S8 | 值返回注册表 + `s8_registry` 夹具 | `bash test/run.sh s8_registry` | `feat(sse): S8 值返回注册表` | M | 是 |
-| S9 | 分配器注入、OOM/计数夹具 | `bash test/run.sh s9_oom`；`bash test/run.sh s9_alloc_count` | `feat(sse): S9 分配器注入与计数` | M | 是 |
+| S9 | 分配器注入、OOM/计数夹具 | `bash test/run.sh s9_oom`；`bash test/run.sh s9_alloc_count`；`bash test/run.sh s9_finish_clean` | `feat(sse): S9 分配器注入与计数` | M | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -208,6 +216,7 @@ pub struct SseRegistry { /* count/err/names[8]/fns[8]，布局不承诺 */ };
 | E-13 | 四处 OOM 注入（parser / 行缓冲 / data 缓冲 / `sse_event_copy`）分别断言失败返回值、`has_error()` 与 `out of memory` | `bash test/run.sh s9_oom` |
 | E-14 | alloc/free 计数在整块、逐字节、伪随机三种切法下相等且 `live == 0`；文档写明只证明整块缓冲漏释放 | `bash test/run.sh s9_alloc_count` |
 | E-15 | 四类记账写入门禁登记：两类环境缺口、ct/ct-ast 等价性不计入门禁通过数、并发为契约 | [S9-allocator](../reviews/S9-allocator.md) §5 人工核对 |
+| E-16 | `finish()` 清理由计数快照（前后不增、销毁后归零）与行为断言共同证明；不加只读接口，块内残留长度登记为不可观测 | `bash test/run.sh s9_finish_clean`、[S9-allocator](../reviews/S9-allocator.md) §6 |
 
 ## 7 非目标
 
@@ -224,3 +233,4 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 2026-11-15 | 第 5 题裁定：`max_line_bytes(n)` 的 `n` 是内容字节上限（非含 NUL 容量）；恰好 `n` 合法、`n+1` 报错，判据以 `n=4096` 写死 | `s5_limits`、E-12 |
 | 2026-11-15 | 第 6/7 题：新增 S9 分配器注入与 OOM/计数夹具；新增 `sse_parser_free` 作为漏斗内销毁出口；并发边界写成契约 C-1 | [S9-allocator](../reviews/S9-allocator.md)、E-13/E-14 |
 | 2026-11-15 | 第 8 题：四类记账（退出可达内存、真实网络分片为环境缺口；ct/ct-ast 等价性登记；并发为契约）写入门禁登记 | [S9-allocator](../reviews/S9-allocator.md) §5、E-15 |
+| 2026-11-15 | 第 12 题：不加只读视察接口；`finish()` 清理由计数快照与行为断言证明，块内残留长度登记为不可观测 | `s9_finish_clean`、A-2、E-16 |

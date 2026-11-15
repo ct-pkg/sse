@@ -62,6 +62,9 @@ if [ "${task%_uaf}" != "$task" ]; then
     exit 0
 fi
 
+# Temporary gate: warnings are matched as text because no structured
+# diagnostic path is wired yet. Replace this with a level-based check once
+# the diagnostic format capability lands; do not treat the grep as permanent.
 if grep -q 'warning:' "$log"; then
     cat "$log" >&2
     fail "build emitted warning"

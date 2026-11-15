@@ -135,3 +135,34 @@ LeakSanitizer；不得表述为「泄漏已验」。
 - 回调在调用 `feed` 的线程上同步触发。
 - 包内无锁、无原子操作；替换 alloc/free 指针是进程级操作，必须在并发使用前完成。
 - 契约落在 [S0 card](../phases/S0/card.md) §4 C-1 与 README「Threading」。
+
+## 6 `finish()` 清理的可观测性（第 12 题裁定）
+
+**不加只读视察接口。** 生成头不增加任何查询/调试方法，测试也不断言内部字段。只用两类证据：
+
+1. **分配计数快照**（`s9_finish_clean`）：`finish()` 前后 `live blocks` / `live bytes` 的增量都是 0；
+   `sse_parser_free` 之后两者归零。
+2. **行为断言**：`finish()` 后 `feed` 返回 -1、`error_msg()` 为 `parser finished`、回调次数不变；
+   `reset()` 后重喂只看到新内容——残留 data 不会拼进新事件，残留半行（`retry: 7` / `id: 9` /
+   `event: stale` 无结尾换行）不会生效。
+
+原始输出：
+
+```text
+pending rc=0 n=0
+finish=0 n=0 add_blocks=0 add_bytes=0
+blocked rc=-1 err=1 msg=parser finished n=0
+e1 data=[fresh] len=5 msg=1 id=- has_retry=0
+fresh rc=1 n=1
+partial_retry_has=0
+partial_id_null=1
+e2 data=[z] len=1 msg=1 id=- has_retry=0
+after_stale rc=1 n=2
+live blocks=0 bytes=0
+```
+
+**不可观测（如实登记）**：`line_len` / `data_len` / `event_len` 这类**块内残留长度**无法由计数器
+看到（计数器只知道分配块大小，不知道块内已写入多少），也无法在不加只读接口的前提下断言。
+按第 12 题裁定不加接口，因此「残留缓冲字节数归零」不能作为直接的字节断言，只能由上面的行为
+断言覆盖。不得用内部字段绕过，也不得把它写成「已在字节级验证」。
+

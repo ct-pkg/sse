@@ -1,0 +1,137 @@
+/*
+ * S9: finish() cleanup is proved without any read-only inspection API.
+ *
+ * Two kinds of evidence only:
+ *   1. allocator counter snapshots around finish() (no new blocks, no new
+ *      bytes) and after destruction (live blocks/bytes back to zero);
+ *   2. behavior: feed after finish reports "parser finished" and fires no
+ *      event; after reset() the parser sees only new content, so discarded
+ *      pending data and partial lines cannot leak into the next stream.
+ *
+ * The logical residue lengths (line/data/event buffers) are NOT asserted:
+ * they are not observable without an inspection API, which the contract
+ * deliberately does not provide. That limitation is registered in
+ * docs/reviews/S9-allocator.md section 6.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "test/sse_alloc_hook.h"
+
+static void *g_ptr[64];
+static int g_size[64];
+static int g_blocks = 0;
+static int g_bytes = 0;
+
+static void *t_alloc(size_t n)
+{
+    void *p = malloc(n);
+    int i = 0;
+
+    if (p == 0) return 0;
+    while (i < 64) {
+        if (g_ptr[i] == 0) {
+            g_ptr[i] = p;
+            g_size[i] = (int)n;
+            g_blocks = g_blocks + 1;
+            g_bytes = g_bytes + (int)n;
+            return p;
+        }
+        i = i + 1;
+    }
+    free(p);
+    return 0;
+}
+
+static void t_free(void *p)
+{
+    int i = 0;
+
+    if (p == 0) return;
+    while (i < 64) {
+        if (g_ptr[i] == p) {
+            g_blocks = g_blocks - 1;
+            g_bytes = g_bytes - g_size[i];
+            g_ptr[i] = 0;
+            g_size[i] = 0;
+            break;
+        }
+        i = i + 1;
+    }
+    free(p);
+}
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d data=[%s] len=%d msg=%d id=%s has_retry=%d\n",
+           *n, ev->data, ev->data_len, ev->is_message(),
+           ev->id != 0 ? ev->id : "-", ev->has_retry());
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p;
+    int n = 0;
+    int rc;
+    int b0;
+    int y0;
+    int b1;
+    int y1;
+
+    sse_test_alloc_hook(t_alloc, t_free);
+    p = sse::sse_parser_new();
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    rc = p->feed("data: pending\n", 14);
+    printf("pending rc=%d n=%d\n", rc, n);
+
+    b0 = g_blocks;
+    y0 = g_bytes;
+    rc = p->finish();
+    b1 = g_blocks;
+    y1 = g_bytes;
+    printf("finish=%d n=%d add_blocks=%d add_bytes=%d\n",
+           rc, n, b1 - b0, y1 - y0);
+
+    rc = p->feed("data: blocked\n\n", 15);
+    printf("blocked rc=%d err=%d msg=%s n=%d\n",
+           rc, p->has_error(), p->error_msg(), n);
+
+    p->reset();
+    rc = p->feed("data: fresh\n\n", 13);
+    printf("fresh rc=%d n=%d\n", rc, n);
+
+    /* a partial line is discarded by finish, so it must not take effect */
+    p->reset();
+    p->feed("retry: 7", 8);
+    p->finish();
+    p->reset();
+    printf("partial_retry_has=%d\n", p->has_retry());
+
+    p->reset();
+    p->feed("id: 9", 5);
+    p->finish();
+    p->reset();
+    printf("partial_id_null=%d\n", p->last_event_id() == 0);
+
+    p->reset();
+    p->feed("event: stale", 12);
+    p->finish();
+    p->reset();
+    rc = p->feed("data: z\n\n", 9);
+    printf("after_stale rc=%d n=%d\n", rc, n);
+
+    sse::sse_parser_free(p);
+    printf("live blocks=%d bytes=%d\n", g_blocks, g_bytes);
+    return 0;
+}

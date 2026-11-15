@@ -204,6 +204,11 @@ The fixtures do not prove leak freedom. What is and is not established:
   are not shown to agree.
 - **Concurrency: unsupported by contract**, as stated in "Threading" above,
   not an untested item.
+- **`finish()` cleanup**: allocator snapshots around `finish()` show no growth,
+  and behavior shows discarded pending data/partial lines never reach the next
+  stream. Block-internal residue lengths are not observable without an
+  inspection API, which the package deliberately does not expose; that part is
+  registered as unobservable, not verified.
 
 Details and raw output: [docs/reviews/S9-allocator.md](docs/reviews/S9-allocator.md).
 
@@ -252,6 +257,7 @@ $ bash test/run.sh s7_integration
 $ bash test/run.sh s8_registry
 $ bash test/run.sh s9_oom
 $ bash test/run.sh s9_alloc_count
+$ bash test/run.sh s9_finish_clean
 ```
 
 Every fixture is built with `-Wall -Wextra -Werror`; the runner fails on any
