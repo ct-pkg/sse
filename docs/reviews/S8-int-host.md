@@ -55,7 +55,7 @@ int c = (5).twice();
 ```
 
 ```console
-$ ct build intmap/main.ct -I /tmp/ct-sse-probe ...
+$ ct build intmap/main.ct -I <probe-root> ...
 rc=0
 $ ./intmapmain
 var=8 temp=8 temp5=10

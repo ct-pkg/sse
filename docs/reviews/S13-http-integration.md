@@ -16,7 +16,7 @@ $ ct get https://github.com/ct-pkg/http@0.1.0        # cwd 为临时目录
 vendored 1 package(s)
 
 $ ct build test/fixtures/i1_http_stream.ct \
-    -I vendor/http -I /Users/samxx/trae-ws/ct-sse \
+    -I vendor/http -I <ct-sse 仓库根> \
     -o i1_http_stream --outdir build \
     --cflags "-Wall -Wextra -Werror" --ldflags "-lcurl"
 
@@ -24,8 +24,8 @@ $ python3 test/integration/i1_server.py              # 打印 PORT <n>
 $ ./i1_http_stream http://127.0.0.1:<n>/sse
 ```
 
-`-I /Users/samxx/trae-ws/ct-sse` 是 ct-sse 仓库根的**绝对路径**；`vendor/` 在临时目录里，
-路径每次运行都不同。门禁脚本按顺序拼这两个 include 根。
+`-I <ct-sse 仓库根>` 是 ct-sse 仓库根的占位写法（实际是绝对路径，随 checkout 位置变化，
+不写死）；`vendor/` 在临时目录里，路径每次运行都不同。门禁脚本按顺序拼这两个 include 根。
 
 ## 3 包根前缀：绕法，不是标准写法
 
@@ -50,7 +50,7 @@ ctc: cannot resolve import 'http/http'
 - 这是**绕法**：`ct install` 的 include-root 计算不读包内布局（ct-http 已提案，
   见其 `docs/proposals/ct-install-include-prefix.md`；本仓库未改 ct-lang / ct-http）。
   CT 修好 `ct install` 后，应改回 `ct install` 打印的标准命令，并删除本节手写的
-  `-I` 顺序与绝对路径。
+  `-I` 顺序。
 
 ## 4 接口映射（实测）
 
