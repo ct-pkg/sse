@@ -114,6 +114,11 @@ static int sse_terminate(char **buf, int *cap, int len)
 
 impl SseParser {
     /* Helpers first: impl methods have no forward declarations. */
+    int line_limit() {
+        if (self->max_line_bytes > 0) return self->max_line_bytes;
+        return 65536;
+    }
+
     int dispatch_event() {
         int r = 0;
 
@@ -271,6 +276,9 @@ impl SseParser {
             return self->process_line();
         }
         self->saw_cr = 0;
+        if (self->line_len >= self->line_limit())
+            return sse_set_error(self, "SSE line exceeds %d bytes",
+                                 self->line_limit());
         if (sse_push_char(&self->line_buf, &self->line_len,
                           &self->line_cap, c) < 0)
             return sse_set_error(self, "out of memory");
