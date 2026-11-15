@@ -32,7 +32,10 @@ fail() {
 }
 
 [ -f "$fixtures/$task.ct" ] || fail "no fixture source"
-[ -f "$fixtures/$task.expected.out" ] || fail "no expected output"
+case "$task" in
+    *_uaf) ;;
+    *) [ -f "$fixtures/$task.expected.out" ] || fail "no expected output" ;;
+esac
 
 cflags="-Wall -Wextra -Werror"
 ldflags=""
@@ -47,6 +50,17 @@ log="$tmp/build.log"
     "$CT_BIN" build "$fixtures/$task.ct" -I "$repo" -o "$task" \
         --outdir "$tmp/build" --cflags "$cflags" --ldflags "$ldflags"
 ) >"$log" 2>&1 || { cat "$log" >&2; fail "ct build failed"; }
+
+if [ "${task%_uaf}" != "$task" ]; then
+    [ "${ASAN:-0}" = "1" ] || fail "uaf fixture requires ASAN=1"
+    "$tmp/$task" >"$tmp/$task.out" 2>&1
+    rc=$?
+    [ "$rc" -ne 0 ] || { cat "$tmp/$task.out" >&2; fail "expected a nonzero exit"; }
+    grep -q 'heap-use-after-free' "$tmp/$task.out" \
+        || { cat "$tmp/$task.out" >&2; fail "expected heap-use-after-free"; }
+    printf 'ok %s (asan abort as expected)\n' "$task"
+    exit 0
+fi
 
 if grep -q 'warning:' "$log"; then
     cat "$log" >&2

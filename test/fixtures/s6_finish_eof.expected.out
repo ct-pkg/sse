@@ -1,0 +1,7 @@
+feed=0
+finish=0 n=0 err=0
+blocked=-1 err=1 msg=parser finished
+e1 data=pending
+e2 data=ok
+feed2=2 n=2
+deleted

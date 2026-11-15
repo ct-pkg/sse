@@ -36,6 +36,9 @@ int main(void)
     printf("feed2=%d n=%d missing_field=%d\n", rc, n,
            p->feed("event: ping\n\n", 13) == 0);
 
+    rc = p->feed("data:\n\n", 7);
+    printf("empty=%d n=%d\n", rc, n);
+
     delete p;
     printf("deleted\n");
     return 0;

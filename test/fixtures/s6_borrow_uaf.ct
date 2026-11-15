@@ -1,0 +1,36 @@
+/*
+ * S6 negative (ASan only): a borrow view dies with the parser. Reading it
+ * after delete must be a heap-use-after-free, never a valid read.
+ *
+ *   ASAN=1 bash test/run.sh s6_borrow_uaf
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static char *g_borrowed = 0;
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    (void)ud;
+    g_borrowed = ev->data;
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char *s = "data: borrowed\n\n";
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, 0);
+    p->feed(s, (int)strlen(s));
+    delete p;
+
+    printf("borrowed=%c\n", g_borrowed[0]);
+    return 0;
+}

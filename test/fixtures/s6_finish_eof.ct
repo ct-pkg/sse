@@ -1,0 +1,47 @@
+/*
+ * S6: WHATWG EOF. finish() discards a pending line and pending data; it never
+ * dispatches a half event. The parser is terminal until reset().
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("e%d data=%s\n", *n, ev->data);
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char *pending = "data: pending";
+    char *blocked = "data: blocked\n\n";
+    char *two = "data: pending\n\ndata: ok\n\n";
+    int n = 0;
+    int rc;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    rc = p->feed(pending, (int)strlen(pending));
+    printf("feed=%d\n", rc);
+    printf("finish=%d n=%d err=%d\n", p->finish(), n, p->has_error());
+
+    rc = p->feed(blocked, (int)strlen(blocked));
+    printf("blocked=%d err=%d msg=%s\n", rc, p->has_error(), p->error_msg());
+
+    p->reset();
+    rc = p->feed(two, (int)strlen(two));
+    printf("feed2=%d n=%d\n", rc, n);
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

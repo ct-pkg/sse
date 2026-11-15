@@ -1,0 +1,6 @@
+e1 data=one
+feed=-1 n=1 err=1 msg=callback aborted
+after=-1 n=1
+e2 data=four
+feed2=1 n=2 err=0
+deleted
