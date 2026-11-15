@@ -1,0 +1,42 @@
+/*
+ * S2: the minimal closed loop - line splitting, "data" field accumulation,
+ * dispatch on a blank line, callback with a "message" event.
+ */
+import sse::sse;
+
+#include <stdio.h>
+#include <string.h>
+
+static int on_ev(SseEvent *ev, void *ud)
+{
+    int *n = ud;
+    *n = *n + 1;
+    printf("ev=%s len=%d data=[%s]\n", ev->event, ev->data_len, ev->data);
+    return 0;
+}
+
+int main(void)
+{
+    SseParser *p = sse::sse_parser_new();
+    char *basic = "data: YHOO\ndata: +2\ndata: 10\n\n";
+    char *single = "data: solo\n\n";
+    int n = 0;
+    int rc;
+
+    if (p == 0) {
+        printf("new=0\n");
+        return 1;
+    }
+    p->on_event(on_ev, &n);
+
+    rc = p->feed(basic, (int)strlen(basic));
+    printf("feed=%d n=%d err=%d\n", rc, n, p->has_error());
+
+    rc = p->feed(single, (int)strlen(single));
+    printf("feed2=%d n=%d missing_field=%d\n", rc, n,
+           p->feed("event: ping\n\n", 13) == 0);
+
+    delete p;
+    printf("deleted\n");
+    return 0;
+}

@@ -1,0 +1,7 @@
+ev=message len=11 data=[YHOO
++2
+10]
+feed=1 n=1 err=0
+ev=message len=4 data=[solo]
+feed2=1 n=1 missing_field=1
+deleted
