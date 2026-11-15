@@ -63,6 +63,82 @@ pub struct SseParser {
     SseEvent current;
 } use Drop;
 
+pub typedef SseParser *(*SseCtor)(void);
+
+/*
+ * A value-returning registry host. Methods return the host by value so the
+ * caller can land the result on a variable:
+ *
+ *   SseRegistry reg = base.reg("parser", sse_parser_new);
+ *   SseParser *p = reg.make("parser");
+ *
+ * error(): 0 ok, 1 not found, 2 duplicate (first registration wins), 3 full.
+ * name strings are borrowed, not copied; use string literals or static storage.
+ */
+pub struct SseRegistry {
+    int count;
+    int err;
+    char *names[8];
+    SseCtor fns[8];
+};
+
+impl SseRegistry {
+    int find(char *name) {
+        int i = 0;
+        while (i < self->count) {
+            if (strcmp(self->names[i], name) == 0) return i;
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    pub SseRegistry init() {
+        int i = 0;
+        self->count = 0;
+        self->err = 0;
+        while (i < 8) {
+            self->names[i] = 0;
+            self->fns[i] = 0;
+            i = i + 1;
+        }
+        return *self;
+    }
+
+    pub SseRegistry reg(char *name, SseCtor fn) {
+        if (self->find(name) >= 0) {
+            self->err = 2;
+            return *self;
+        }
+        if (self->count >= 8) {
+            self->err = 3;
+            return *self;
+        }
+        self->names[self->count] = name;
+        self->fns[self->count] = fn;
+        self->count = self->count + 1;
+        self->err = 0;
+        return *self;
+    }
+
+    pub SseParser *make(char *name) {
+        int i = self->find(name);
+        if (i < 0) {
+            self->err = 1;
+            return 0;
+        }
+        self->err = 0;
+        return self->fns[i]();
+    }
+
+    pub int error() {
+        return self->err;
+    }
+
+    pub int size() {
+        return self->count;
+    }
+}
+
 /* Record a fatal error and answer -1 for the caller's return path. */
 static int sse_set_error(SseParser *p, char *fmt, ...)
 {
