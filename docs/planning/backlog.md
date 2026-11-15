@@ -19,7 +19,7 @@
 
 ## 1 待办：包清单补充发布者与命名根
 
-**为什么需要**：消费方通过包管理器取包时，需要知道发布者和 import 的命名根。当前 `ct.pkg`
+**为什么需要**：消费方通过包管理器取包时，需要知道发布者和 import 的命名根。此前 `ct.pkg`
 只有 `name`、`version`、`licence`、`requires`，取包方无法从清单里得到这两项信息。
 
 **要做什么**：在 `ct.pkg` 增加 `publisher = ct` 与 `ns-root = .`；同步把 README 构建示例的
@@ -34,8 +34,9 @@ include 根改成包根。
 3. 消费方不手写包内子目录的 `-I`，`import sse::sse` 仍能解析。
 4. `python3 tools/check_api.py` 退出 0（公开面不变）。
 
-**当前状态**：可立即开工，本轮尚未开工（本轮只重判并更新文档）。工作区已有未提交的
-`ct.pkg` 与根 `README.md` 改动，内容正是这两项；先核对字段与示例，再按主题提交。
+**当前状态**：已完成。`ct.pkg` 含 `publisher = ct` 与 `ns-root = .`，README 构建示例改用
+`-I .`，见提交 12b4883；`ct pkg check .` 输出 `ok: 4 criteria`，`import sse::sse` 以仓库根
+为 include 根仍能解析。许可统一为 MIT（`licence = MIT`、`LICENSE` 为 MIT）。
 
 **本仓的分期判断**：不单独立 phase 仍然成立——它是包清单配置补全，不新增解析能力、不改公开面。
 但「保持阻塞」不成立：它是当前第一项可执行的维护任务，应先于发布 tag。
