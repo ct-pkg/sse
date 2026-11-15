@@ -136,7 +136,11 @@ containing NUL) are ignored and do **not** set an error.
 These are language facts, not preferences (probes in `docs/reviews/S0-facts.md`):
 
 - Static inherent methods are unusable inside a `namespace` unit, so the
-  constructor is the free function `sse_parser_new()`.
+  constructor is the free function `sse_parser_new()`. Two alternatives -- a
+  global singleton object with an instance-method factory, and a string-keyed
+  function-pointer table -- were probed and rejected (runtime lookup failure
+  modes, mutable global ABI, no usability gain); see
+  [docs/reviews/S0-constructor-shapes.md](docs/reviews/S0-constructor-shapes.md).
 - Methods in `impl` have no forward declaration: helpers are defined before
   their callers.
 - A private method whose name starts with `_` cannot be called
