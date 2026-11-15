@@ -54,8 +54,8 @@
   | S3 | event/id/retry 语义与 dispatch 清空 | 字段真值表用例 |
   | S4 | 跨 chunk 半行、CRLF/CR 跨分片、BOM | 逐字节 feed 与整块 feed 序列一致 |
   | S5 | 行上限、终止态、OOM 分支 | 边界 n-1/n/n+1 与 -1 后幂等 |
-  | S6 | `reset` 复用、`finish` EOF 丢弃、状态查询 | 复用与 EOF 用例 |
-  | S7 | `sse_event_copy/free`、README、集成样例 | ASan 正负例 + 桩集成样例 |
+  | S6 | `sse_event_copy/free`、reset/finish 回归 | ASan 正负例 |
+  | S7 | README、集成样例、合规对照表 | 桩集成样例可构建运行 |
 
 ### B-5 「`SseParser::new()` 静态工厂」→ **不成立**
 

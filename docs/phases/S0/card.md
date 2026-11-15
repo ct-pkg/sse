@@ -138,8 +138,8 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | S3 | event/id/retry 语义 + `s3_*` 夹具 | `bash test/run.sh s3_fields` | `feat(sse): S3 字段语义` | M | 是 |
 | S4 | 跨分片行结束 + BOM + `s4_*` 夹具 | `bash test/run.sh s4_chunk` | `feat(sse): S4 分片与 BOM` | M | 是 |
 | S5 | 行上限/终止态 + `s5_*` 夹具 | `bash test/run.sh s5_limits` | `feat(sse): S5 限额与终止态` | M | 是 |
-| S6 | reset/finish/状态查询 + `s6_*` 夹具 | `bash test/run.sh s6_reuse` | `feat(sse): S6 复用与 EOF` | S | 是 |
-| S7 | copy/free + README + 集成样例 + `s7_*` 夹具 | `bash test/run.sh s7_copy` | `feat(sse): S7 拷贝出口与文档` | M | 是 |
+| S6 | `sse_event_copy`/`sse_event_free` + `s6_copy` 夹具 | `bash test/run.sh s6_copy` | `feat(sse): S6 拷贝出口` | M | 是 |
+| S7 | README + 集成样例 + `s7_integration` 夹具 | `bash test/run.sh s7_integration` | `test(sse): S7 示例与文档` | S | 是 |
 
 每项任务的 `test` 提交先行、实现提交紧随（T-7）；红证写入提交正文 `red: rc=<N>, "<失败文案>"`。
 
@@ -151,7 +151,7 @@ pub struct SseParser { /* 字段私有，不对调用方承诺布局 */ } use Dr
 | E-2 | `feed`/`finish`/`reset` 的 F-1–F-3 契约逐条有正例或负例 | 同上 |
 | E-3 | 错误文本按 X-1 精确比对 | `bash test/run.sh s5_limits` |
 | E-4 | 生成头导出的符号与本卡 §3 清单完全一致（不多不少） | `nm`/`grep` 比对生成 `.h` |
-| E-5 | 借用负例在 ASan 下报 heap-use-after-free；copy 正例无泄漏 | `ASAN=1 bash test/run.sh s7_copy` |
+| E-5 | 借用负例在 ASan 下报 heap-use-after-free；copy 正例无泄漏 | `ASAN=1 bash test/run.sh s6_copy` |
 | E-6 | 构建零警告（`-Wall -Wextra -Werror`，且 ct 自身无 warning） | `test/run.sh` 对 stderr 检查 |
 | E-7 | 不依赖静态固有方法 / errdefer / 链式调用（可 grep 核对） | `grep -n` 本卡 §2 三个禁用形态 |
 | E-8 | 任务清单每项可独立验收（6.6 T-6） | 逐项跑各自 `verify` |
@@ -166,3 +166,4 @@ HTTP 传输、LLM 协议语义、重连策略、事件路由/多订阅、字符�
 | 日期 | 变更 | 依据 |
 | --- | --- | --- |
 | 2026-11-15 | 首版冻结；相对提案修正 WHATWG W10、retry 0 值、静态工厂、行上限、分期 | S0-facts、S0-battle |
+| 2026-11-15 | S6/S7 重切：原 S6（reset/finish）的行为已在 S1/S4/S5 落地，无独立红证可出；copy/free 移到 S6，README/集成样例移到 S7 | T-7 红证要求；E-5 需 copy 夹具 |

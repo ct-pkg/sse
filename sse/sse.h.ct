@@ -424,3 +424,57 @@ pub SseParser *sse_parser_new(void)
 {
     return calloc(1, sizeof(SseParser));
 }
+
+static char *sse_dup_str(char *s)
+{
+    char *r;
+    int n;
+
+    if (s == 0) return 0;
+    n = (int)strlen(s);
+    r = malloc((size_t)n + 1);
+    if (r == 0) return 0;
+    memcpy(r, s, (size_t)n + 1);
+    return r;
+}
+
+pub void sse_event_free(SseEvent *ev)
+{
+    if (ev == 0) return;
+    free(ev->event);
+    free(ev->data);
+    free(ev->id);
+    free(ev);
+}
+
+pub SseEvent *sse_event_copy(SseEvent *ev)
+{
+    SseEvent *cp;
+
+    if (ev == 0) return 0;
+    cp = calloc(1, sizeof(SseEvent));
+    if (cp == 0) return 0;
+
+    cp->event = sse_dup_str(ev->event);
+    if (ev->event != 0 && cp->event == 0) {
+        sse_event_free(cp);
+        return 0;
+    }
+    cp->data_len = ev->data_len;
+    if (ev->data != 0) {
+        cp->data = malloc((size_t)ev->data_len + 1);
+        if (cp->data == 0) {
+            sse_event_free(cp);
+            return 0;
+        }
+        memcpy(cp->data, ev->data, (size_t)ev->data_len);
+        cp->data[ev->data_len] = 0;
+    }
+    cp->id = sse_dup_str(ev->id);
+    if (ev->id != 0 && cp->id == 0) {
+        sse_event_free(cp);
+        return 0;
+    }
+    cp->retry = ev->retry;
+    return cp;
+}
