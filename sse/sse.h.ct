@@ -1,0 +1,147 @@
+namespace sse;
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/*
+ * SseEvent is a borrow view owned by the parser. Its fields stay valid until
+ * the callback returns, and no longer than the next feed / finish / reset /
+ * delete on the same parser. To keep an event, use sse_event_copy().
+ */
+pub struct SseEvent {
+    char *event;
+    char *data;
+    int data_len;
+    char *id;
+    int retry;
+}
+
+impl SseEvent {
+    pub int has_id() {
+        return self->id != 0;
+    }
+    pub int has_retry() {
+        return self->retry >= 0;
+    }
+    pub int is_message() {
+        if (self->event == 0) return 1;
+        return strcmp(self->event, "message") == 0;
+    }
+}
+
+pub typedef int (*SseEventCb)(SseEvent *ev, void *ud);
+
+pub struct SseParser {
+    char *line_buf;
+    int line_len;
+    int line_cap;
+    char *data_buf;
+    int data_len;
+    int data_cap;
+    char *event_buf;
+    int event_len;
+    int event_cap;
+    char *id_buf;
+    int id_len;
+    int id_cap;
+    int id_valid;
+    int retry;
+    int retry_valid;
+    int has_data;
+    int error;
+    int finished;
+    int saw_cr;
+    int max_line_bytes;
+    int bom_state;
+    char bom_buf[3];
+    int bom_len;
+    char error_msg[128];
+    SseEventCb on_event;
+    void *on_event_ud;
+    SseEvent current;
+} use Drop;
+
+impl SseParser {
+    pub int on_event(SseEventCb cb, void *ud) {
+        self->on_event = cb;
+        self->on_event_ud = ud;
+        return 0;
+    }
+
+    pub int max_line_bytes(int n) {
+        if (n < 1) return -1;
+        self->max_line_bytes = n;
+        return 0;
+    }
+
+    pub int feed(char *chunk, int len) {
+        (void)chunk;
+        (void)len;
+        if (self->error) return -1;
+        if (self->finished) {
+            self->error = 1;
+            snprintf(self->error_msg, sizeof(self->error_msg),
+                     "parser finished");
+            return -1;
+        }
+        return 0;
+    }
+
+    pub int finish() {
+        if (self->error) return -1;
+        if (self->finished) return -1;
+        self->finished = 1;
+        return 0;
+    }
+
+    pub int has_error() {
+        return self->error;
+    }
+
+    pub char *error_msg() {
+        if (self->error == 0) return 0;
+        return self->error_msg;
+    }
+
+    pub char *last_event_id() {
+        if (self->id_valid == 0) return 0;
+        return self->id_buf;
+    }
+
+    pub int retry_hint() {
+        if (self->retry_valid == 0) return -1;
+        return self->retry;
+    }
+
+    pub void reset() {
+        self->line_len = 0;
+        self->data_len = 0;
+        self->event_len = 0;
+        self->has_data = 0;
+        self->saw_cr = 0;
+        self->bom_state = 0;
+        self->bom_len = 0;
+        self->error = 0;
+        self->finished = 0;
+        self->error_msg[0] = 0;
+    }
+}
+
+impl Drop for SseParser {
+    void drop() {
+        free(self->line_buf);
+        free(self->data_buf);
+        free(self->event_buf);
+        free(self->id_buf);
+        self->line_buf = 0;
+        self->data_buf = 0;
+        self->event_buf = 0;
+        self->id_buf = 0;
+    }
+}
+
+pub SseParser *sse_parser_new(void)
+{
+    return calloc(1, sizeof(SseParser));
+}
