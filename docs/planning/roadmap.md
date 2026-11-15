@@ -111,6 +111,7 @@
 | tag | 每个 phase 收口一个 annotated tag `v<version>`；**由 USER 在发版时执行** |
 | push | 分支与 tag 的推送、远端发布**由 USER 执行**；本仓库当前只做本地提交 |
 | 现在不做 | 不打 tag、不 push、不对外发布；集成门禁的 `ct get` 失败先登记，不绕过 |
+| 包外 tag 任务 | EXT-SSE-02：`v0.11.0` 等 C1/C2 与通用 tag 规则满足后由 owner 执行；详见 [external-items](external-items.md) |
 
 ## 5 与提案 S0–S7 的差异
 
@@ -178,3 +179,4 @@ $ bash test/integration.sh   # 0 通过、1 失败、2 前置条件缺失
 | G-3 | `ct`/`ct-ast` 等价性未证 | 第二个前端不可用；不把数量计入门禁通过 |
 | G-4 | 块内残留长度不可观测 | 第 12 题裁定不加接口；由计数快照+行为断言覆盖 |
 | G-5 | 第 9/10 题裁定未留档 | 不代拟；补齐后补评估表，不单独成片 |
+| G-6 | 包外事项 EXT-SSE-01/02/03 | 不新增 phase；认领与阻塞状态见 [external-items](external-items.md) |
