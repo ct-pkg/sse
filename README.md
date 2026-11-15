@@ -61,7 +61,7 @@ both on the same parser.
 Build a program that imports the package:
 
 ```console
-$ ct build app.ct -I /path/to/ct-sse -o app --cflags "-Wall -Wextra -Werror"
+$ ct build app.ct -I . -o app --cflags "-Wall -Wextra -Werror"
 ```
 
 ### Registry construction
