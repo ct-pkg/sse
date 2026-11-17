@@ -1,0 +1,9 @@
+# Local build output (ct build without --outdir)
+.ctbuild/
+
+# Local scratch per DB-4
+.temp/
+
+# Ad-hoc binaries
+a.out
+*.o
