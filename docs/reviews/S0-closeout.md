@@ -134,7 +134,7 @@ $ grep -n -- ")->" sse/sse.h.ct test/fixtures/*.ct
 | D-3 | 泄漏未量化 | macOS ASan 无 LSan；S9 计数器只证明「整块缓冲漏释放已验证」，退出可达内存仍为环境缺口（[S9-allocator](S9-allocator.md) §5.1） |
 | D-4 | `finish()` 清理残留缓冲不可观测 | 第 12 题裁定后拆成两类证据：计数快照（`finish` 前后不增、销毁后归零）+ 行为断言（不吐旧数据、半行不生效），见 `s9_finish_clean`；块内残留长度仍不可观测，不加只读接口（[S9-allocator](S9-allocator.md) §6） |
 | D-5 | `SseParser` 字段布局随生成头公开 | CT 的 `.h.ct` 必然导出结构体布局；契约已声明「布局不承诺」 |
-| D-6 | 构建输出 `warning:` 依赖 ct/cc 文本 | **临时做法**：只对构建日志做 `warning:` 文本匹配；待结构化诊断格式能力落地后替换为按诊断级别判断，不得视为永久方案 |
+| D-6 | 构建输出 `warning:` 依赖 ct/cc 文本 | **已于 2026-11-17 由 PH-12 关闭**：删除文本匹配，改由 `-Werror` 升级 + 构建退出码判定；探针与限制见 [diagnostics-format](diagnostics-format.md)。原临时方案已撤销 |
 
 ## 5 结论
 

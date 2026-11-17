@@ -87,7 +87,7 @@
 | G-2 | 真实网络分片 | 环境缺口；切点由本仓库选定（整块/逐字节/伪随机 1..7），真实 TCP 断点无法穷举（[S9](S9-allocator.md) §5.2） |
 | G-3 | 退出时可达内存 | 环境缺口；macOS ASan 不支持 `detect_leaks`，需 Linux CI（[S9](S9-allocator.md) §5.1） |
 | G-4 | `ct` / `ct-ast` 等价性 | 未证；golden 由 `ct` 跑出，不计入门禁通过数（[S9](S9-allocator.md) §5.3） |
-| G-5 | 集成门禁取包瞬时失败 | 2026-11-15 首次 `ct get` 报 `git fetch ... failed`（退出 1），复跑同一命令通过（`ok i1_http_stream`）。发布 tag 源码也可按 `git clone --branch v0.1.0` 审计（[S16](S16-dependency-direction.md) §2.1、§5）。记录保留，不作为阻塞 |
+| G-5 | 集成门禁取包 | 2026-11-15 首次 `ct get` 报 `git fetch ... failed`（退出 1），复跑通过。2026-11-17 复核：CT v0.63 下 0.1.0 清单缺 `publisher`，门禁改用 ct-http 0.2.1 + `ct build --locked` 后通过（[S13](S13-http-integration.md) §8、[S16](S16-dependency-direction.md) §2.5）。历史记录保留 |
 | G-6 | 块内残留长度 | 不可观测（第 12 题裁定），只有计数快照 + 行为断言（S0 卡 §9-5） |
 
 ## 6 结论

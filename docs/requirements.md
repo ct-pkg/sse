@@ -84,7 +84,7 @@
 | 编号 | 要什么 | 不要什么 | 边界/判据 | 依据 |
 | --- | --- | --- | --- | --- |
 | R-F-01 | 公开 API 面冻结且可枚举；清单外不承诺 | 不扩方法级可见性、不申请语言改动 | 生成头导出符号与清单完全一致（不多不少） | B-10；S0 卡 §3 |
-| R-F-02 | 构建零警告（`-Wall -Wextra -Werror`，ct 自身也不得 warning） | 不放宽警告门禁 | 每个夹具构建日志无 `warning:`（当前为文本匹配，见 PH-12） | 第 11 题；`test/run.sh` |
+| R-F-02 | 构建零警告（`-Wall -Wextra -Werror`，ct 自身也不得 warning） | 不放宽警告门禁 | `-Werror` 将警告升级为错误，构建退出码非 0 即失败（PH-12；不再匹配 `warning:` 文本） | 第 11 题；`test/run.sh` |
 | R-F-03 | 真实 ct-http 发布版能驱动 `feed`；集成门禁独立于单包门禁 | 不改 ct-http；不把集成依赖塞进单包门禁 | BOM 分片、data 跨 chunk、多行 data、id/retry 持久、空 id、空行、EOF 均有断言 | 第 13 题；`test/integration.sh` |
 | R-F-04 | 包不反向依赖下游；`vendor/` 只用于集成、不进发布产物 | 不把测试替身写成产品依赖 | `sse/` 无 `import`；发布产物只有 `sse/` 与 `ct.pkg` | 第 16 题；[S16](reviews/S16-dependency-direction.md) |
 | R-F-05 | 契约细则要么有夹具，要么在契约标「无独立用例」并给理由 | 不用只断言常量的用例凑覆盖率 | 覆盖表逐条有状态；无独立用例 9 条有理由 | 第 14 题；[S14](reviews/S14-coverage.md)、S0 卡 §9 |
