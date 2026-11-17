@@ -1,6 +1,7 @@
 # S16：依赖方向与 ct-http 审计
 
-> 日期：2026-11-15。CT v0.53.0。ct-http **0.1.0**（annotated tag `v0.1.0` → commit `b4b7b43`）。
+> 日期：2026-11-15（0.1.0 审计）；2026-11-17 补 0.2.1 复核。CT v0.63.0。
+> ct-http **0.1.0**（annotated tag `v0.1.0` → commit `b4b7b43`）；**0.2.1**（commit `1121bbc`，见 §2.5）。
 > 依据：负责人第 16 题裁定（`ct-http` 更底层，`ct-sse` 依赖 `ct-http`，单向；提案写的
 > `ct-http → ct-sse` 是反的）。
 
@@ -102,6 +103,28 @@ http/http.m.ct:32:    CResponse *send_stream(HttpChunkCb cb, void *ud);
 
 与 `sse_parser.feed(char *, int)` 的所有权约定**不冲突**：`feed` 在返回前把字节拷进 parser
 自己的缓冲，从不保留 `chunk` 指针。I-1 夹具已按此跑通（[S13](S13-http-integration.md)）。
+
+### 2.5 ct-http 0.2.1 复核（2026-11-17）
+
+0.2.1 是清单/分发的 patch 重发，tag `v0.2.1` → commit `1121bbc`。按 PH-14 的触发条件
+重跑同一组审计：
+
+```console
+$ git clone --depth 1 --branch v0.2.1 https://github.com/ct-pkg/http http021
+$ cd http021 && git rev-parse HEAD
+1121bbc9c1d24b3933662d475386e419edde768b
+$ grep -rniE "event-stream|server-sent|last-event|text/event|data:|event:|retry:|dispatch" http test
+http/http.shim.c:1120:/* Dispatch through the struct field: no vtable lookup, one indirect call. */
+```
+
+唯一命中是 `http.shim.c` 里讲函数指针分派的注释，与 SSE 无关。`http/` 仍是
+`http.m.ct`、`Types.h.ct`、`http.shim.c`、`http.shim.h`、`README.md` 五个文件；
+`grep -rni "sse" http/` 无命中，`grep -rn "import" http/` 无命中，也没有
+`text/event-stream` / `Content-Type` 分流。0.2.1 的变更集是 `ct.pkg` 的
+`publisher`/`ns-root` 与版本号，不是接口或传输语义。
+
+**结论**：v0.2.1 仍无 SSE 解析、事件分发、`text/event-stream` 判断或 `Last-Event-ID`
+处理，PH-14 的触发条件未成立，本包无工作项；不为了凑片去改 ct-http 或本包。
 
 ## 3 对 ct-http 的建议（只报告，未改一行）
 

@@ -1,7 +1,7 @@
 # PH-14：ct-http 若含 SSE 逻辑的下沉跟进
 
 > 编号 `PH-14`；目录 `docs/phases/PH-14/`；`version-minor` 14；规范版本 1.10.0。
-> 状态：**条件未触发（当前无工作项）**。
+> 状态：**已复核（ct-http v0.2.1 无工作项；0.14.0 不交付）**。
 > 依据：第 16 题裁定；[S16](../../reviews/S16-dependency-direction.md) §2–§3。
 
 ## 1 开卡必填
@@ -40,5 +40,6 @@
 
 - 触发条件：ct-http 发布版出现 SSE 解析、事件分发、`text/event-stream` 判断或
   `Last-Event-ID` 处理。
-- 当前结论（ct-http 0.1.0，commit `b4b7b43`）：**0 处 SSE 语义**，本片无工作项。
-  不为了凑片去改 ct-http 或本包。
+- 当前结论（ct-http v0.2.1，commit `1121bbc`；2026-11-17 复核）：**0 处 SSE 语义**，
+  本片无工作项。`grep` 唯一命中是 `http.shim.c` 的函数指针分派注释；证据见
+  [S16](../../reviews/S16-dependency-direction.md) §2.5。不为了凑片去改 ct-http 或本包。

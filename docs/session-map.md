@@ -31,3 +31,6 @@
 | 2026-11-15 | PH-11 文档与示例收尾 | `docs/README.md`、`tools/check_links.py`、`tools/check_api.py`、`tools/api_surface.txt`、`test/fixtures/ex_*.ct`、README 注册表示例修正 |
 | 2026-11-15 | 本仓待办与已决事项（包清单、发布 tag、构造形态） | `docs/planning/backlog.md`、roadmap §4/§7、文档索引 |
 | 2026-11-17 | phase 规划与台账核对 | `docs/reviews/planning-audit.md`、roadmap/backlog/AGENTS 0.1 修订 |
+| 2026-11-17 | PH-12 诊断级别门禁 | `test/gates/g12_warning.sh`、`test/run.sh`、`docs/reviews/diagnostics-format.md`、PH-12 卡 |
+| 2026-11-17 | PH-14 ct-http 0.2.1 复核 | `docs/reviews/S16-dependency-direction.md` §2.5、PH-14 卡 |
+| 2026-11-17 | PH-13 Linux runner 复核 | PH-13 卡 §5、`docs/reviews/planning-audit.md` GAP-2 |

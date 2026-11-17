@@ -11,7 +11,7 @@
 | 目标 | 补上“退出时仍可达内存”的检查，区分「整块缓冲漏释放已验证」与「泄漏已验」 |
 | 范围 | 做：Linux runner 上的 `detect_leaks=1` 全量运行、CI 配置、记录；不做：用计数器替代 LSan |
 | 交付物 | CI 配置；`docs/reviews/lsan-linux.md`（命令与原始输出） |
-| 依赖 | PH-11；可运行 CT v0.53.0 的 Linux runner |
+| 依赖 | PH-11；可运行 CT v0.63.0 的 Linux runner |
 | 规范版本 | 1.10.0 |
 | version-minor | 13 |
 | 已知风险 | runner 缺 CT 或 libcurl；LSan 与 ASan 版本不匹配；把平台差异误判成泄漏 |
@@ -38,5 +38,9 @@
 
 ## 5 阻塞条件
 
-- 没有 Linux runner 或 runner 不能运行 CT v0.53.0 时不开工。
+- 没有 Linux runner 或 runner 不能运行 CT v0.63.0 时不开工。
+- 2026-11-17 复核：本机 `docker` 不存在；`podman machine list` 因
+  `~/.config/containers/...` 写入被沙箱拒绝而失败；`colima` 因
+  `mkdir /Users/samxx/.colima: operation not permitted` 失败。没有可用 Linux 环境。
+  原文见 [planning-audit](../../reviews/planning-audit.md) GAP-2。
 - 在解除前，退出可达内存继续登记为环境缺口，不用计数器冒充。
