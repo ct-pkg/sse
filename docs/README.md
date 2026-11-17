@@ -34,6 +34,7 @@
 - ct-http 真实对接：[S13-http-integration.md](reviews/S13-http-integration.md)
 - 契约细则覆盖表（两席 battle）：[S14-coverage.md](reviews/S14-coverage.md)
 - 依赖方向与 ct-http 审计：[S16-dependency-direction.md](reviews/S16-dependency-direction.md)
+- 验收映射（ACC-* ↔ R-*）：[acceptance-map.md](acceptance-map.md)
 - phase 规划与台账核对：[planning-audit.md](reviews/planning-audit.md)
 - 诊断格式与门禁判定：[diagnostics-format.md](reviews/diagnostics-format.md)
 - Linux LSan 运行记录：[lsan-linux.md](reviews/lsan-linux.md)

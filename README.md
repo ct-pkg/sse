@@ -25,7 +25,6 @@ test/run.sh            build/run one fixture, diff expected output
 test/fixtures/*.ct     behavior locks (s1 ... s9)
 docs/                  proposal, requirements, S0 contract, reviews
 ```
-
 ## Use
 
 ```ct
@@ -150,7 +149,6 @@ and across `reset()`.
 - `make(name)` sets `err=0` on hit; on miss it returns `0` and sets `err=1`.
 - `name` is borrowed, not copied: use a literal or static storage.
 - `error()` reflects the most recent `reg`/`make`/`init`.
-
 ### Errors
 
 | Condition | code | `error_msg()` |

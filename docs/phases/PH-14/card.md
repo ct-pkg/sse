@@ -18,10 +18,10 @@
 
 ## 2 任务清单
 
-| id | 交付物 | 验收命令 | 提交 | 可单独回滚 |
-| --- | --- | --- | --- | --- |
-| T1 | ct-http 新版本审计 | `grep -rni -E "event-stream|server-sent|last-event|data:|event:|retry:" http/` | 计划：`docs(sse): PH-14 T1 审计` | 是 |
-| T2 | 下沉建议（仅报告） | issue/提案链接存在 | 计划：`docs(sse): PH-14 T2 建议` | 是 |
+| id | 交付物 | 验收命令 | effort | 提交 | 可单独回滚 |
+| --- | --- | --- | --- | --- | --- |
+| T1 | ct-http 新版本审计（no-test: 纯复核记录） | `grep -rniE "event-stream" http/`；完整模式见 S16 §2.5 | S | 计划：`docs(sse): PH-14 T1 审计` | 是 |
+| T2 | 下沉建议（仅报告；无项时不制造改动） | issue/提案链接存在，或明确写「无工作项」 | S | 计划：`docs(sse): PH-14 T2 建议` | 是 |
 
 ## 3 退出判据
 

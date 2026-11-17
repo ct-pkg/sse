@@ -323,9 +323,9 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 | --- | --- |
 | 对话清单 | 需求池 / 技术池 / 评审三类常驻对话；phase 对话按 9.3 命名：`[ct-sse] P<nn> · <目标一句话>` |
 | 任务-对话映射 | [docs/session-map.md](docs/session-map.md)（4 列：任务 / 对话 / 角色 / phase） |
-| 门禁入口 | `tools/check.sh` 未建（G0–G9 未落地；当前临时验收：`bash test/run.sh <task>`、`bash test/integration.sh`、`python3 tools/check_links.py`、`python3 tools/check_api.py`）。缺口的编号与影响见 [planning-audit](docs/reviews/planning-audit.md) GAP-1，不冒充通过 |
+| 门禁入口 | `bash tools/check.sh g0` … `g9`（G0–G9；G4 的 snippet 来源检查与 G5/G8 的提交级检查为人工项，脚本用 `note:` 标出）。另可用 `bash test/run.sh <task>`、`bash test/integration.sh` |
 | 文档 snippet | `docs/snippets/` 未建；README 代码块是文档示例，未纳入 G4 的 snippet 校验 |
-| Issue 台账 | `issues/` 未建；前缀 `SSE-<n>`（待建） |
+| Issue 台账 | `issues/README.md`；前缀 `SSE-<n>`（当前无未关闭条目） |
 | 决策记录 | `docs/decisions/` 未建；当前裁定见 [docs/requirements.md](docs/requirements.md)、[docs/design.md](docs/design.md) 与 `docs/reviews/` |
 | 版本落点 | `ct.pkg#version`、`README.md` 的 `Package version:` 行（2026-11-17 当前 `0.13.0`） |
 | 偏离项 | 无（见 0.3） |
