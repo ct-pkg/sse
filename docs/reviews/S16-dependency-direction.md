@@ -156,16 +156,17 @@ http/http.shim.c:1120:/* Dispatch through the struct field: no vtable lookup, on
 
 ## 5 集成门禁的当前状态
 
-`bash test/integration.sh` 的前置检查（ct/git/python3/cc/libcurl）都通过。
-首次运行在 `ct get` 的 git fetch 阶段失败（退出码 1，打印原始日志；退出 2 只用于缺少
-外部前置条件，不会把它误报成 BLOCKED）。复跑同一命令通过：
+`bash test/integration.sh` 的前置检查（ct/git/python3/cc/libcurl）都通过。2026-11-17 在
+CT v0.63 下复核：0.1.0 的清单缺 `publisher`，门禁改用 ct-http 0.2.1 + `ct build --locked`，
+通过：
 
 ```console
 $ bash test/integration.sh
-ok i1_http_stream (ct-http 0.1.0, real loopback chunks)
+ok i1_http_stream (ct-http 0.2.1, real loopback chunks)
 ```
 
-结论：首次失败是取包链路的瞬时问题，与依赖方向无关；保留记录，不写成「从未失败」。
+2026-11-15 的 0.1.0 记录（首次 `ct get` 在 git fetch 阶段瞬时失败，复跑通过）保留为历史；
+首次失败是取包链路问题，与依赖方向无关。
 
 ## 6 作废项
 

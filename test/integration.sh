@@ -25,7 +25,7 @@ if [ -z "$CT_BIN" ]; then
     fi
 fi
 CC_BIN="${CC:-cc}"
-spec="${CT_HTTP_SPEC:-https://github.com/ct-pkg/http@0.1.0}"
+spec="${CT_HTTP_SPEC:-https://github.com/ct-pkg/http@0.2.1}"
 task="i1_http_stream"
 fixtures="$repo/test/fixtures"
 server="$repo/test/integration/i1_server.py"
@@ -59,29 +59,26 @@ cleanup() {
 trap cleanup EXIT
 
 # 1. Fetch the released package (release line, not a local checkout).
+#    CT v0.63 installs into the package store and writes ct.lock; it no
+#    longer creates vendor/. The lock is the handoff to `ct build --locked`.
 if ! ( cd "$tmp" && "$CT_BIN" get "$spec" ) >"$tmp/get.log" 2>&1; then
     cat "$tmp/get.log" >&2
     fail "ct get '$spec' failed (needs network/git and the release tag; see log above)"
 fi
-[ -f "$tmp/vendor/http/ct.pkg" ] \
-    || fail "unexpected vendored layout: vendor/http/ct.pkg is missing"
-[ -f "$tmp/vendor/http/http/http.m.ct" ] \
-    || fail "unexpected vendored layout: vendor/http/http/http.m.ct is missing"
+[ -f "$tmp/ct.lock" ] \
+    || fail "ct get did not write ct.lock (unexpected CT behaviour)"
 
-# 2. Build with the package root as the include root (see the review doc for
-#    why `-I vendor/http/http` is wrong and why this is a temporary workaround).
+# 2. Build from the lock. `--locked` adds the package include roots, so the
+#    test does not need to know the store path or the old vendor/ layout.
+#    Warnings are errors: -Werror escalates them; the exit status is the gate.
 LOG="$tmp/build.log"
 (
     cd "$tmp" || exit 1
     "$CT_BIN" build "$fixtures/$task.ct" \
-        -I "$tmp/vendor/http" -I "$repo" \
+        --locked -I "$repo" \
         -o "$task" --outdir "$tmp/build" \
         --cflags "-Wall -Wextra -Werror" --ldflags "-lcurl"
 ) >"$LOG" 2>&1 || { cat "$LOG" >&2; fail "ct build failed"; }
-if grep -q 'warning:' "$LOG"; then
-    cat "$LOG" >&2
-    fail "build emitted warning"
-fi
 
 # 3. Start the loopback origin and read its port.
 python3 "$server" >"$tmp/port.txt" 2>"$tmp/server.err" &
@@ -107,4 +104,4 @@ srv_pid=""
 diff -u "$fixtures/$task.expected.out" "$tmp/$task.out" \
     || fail "output mismatch"
 
-printf 'ok %s (ct-http %s, real loopback chunks)\n' "$task" "$(awk '/^http /{print $2}' "$tmp/ct.lock")"
+printf 'ok %s (ct-http %s, real loopback chunks)\n' "$task" "$(awk '$1 == "ct/http" {print $2}' "$tmp/ct.lock")"

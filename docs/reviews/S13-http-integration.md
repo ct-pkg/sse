@@ -1,6 +1,7 @@
 # I-1：ct-http 真实对接（独立集成门禁）
 
-> 日期：2026-11-15。ct v0.53.0。ct-http **0.1.0**（release tag `v0.1.0`，commit `b4b7b43`）。
+> 日期：2026-11-15（0.1.0 原始记录）；2026-11-17 补 CT v0.63 / ct-http 0.2.1 复核（§8）。
+> 原始环境：ct v0.53.0、ct-http **0.1.0**（release tag `v0.1.0`，commit `b4b7b43`）。
 > 夹具：`test/fixtures/i1_http_stream.ct`；门禁：`bash test/integration.sh`。
 
 ## 1 结论
@@ -90,9 +91,9 @@ after=-1
 
 - 退出码：0 通过、1 失败、2 被外部前置条件阻塞。
 - blocked（退出 2）：没有 `ct` / `git` / `python3` / C 编译器 / libcurl 头文件。
-- fail（退出 1）：`ct get` 拉不到（网络、git、tag 缺失）、构建失败、出现 `warning:`、服务器
-  没报端口、夹具非零退出、输出 diff 不符；日志与提示随失败一起打印。
-- 每次运行在 `mktemp -d` 里 `ct get`，**不把 vendor/ 提交进仓库**。
+- fail（退出 1）：`ct get` 拉不到（网络、git、tag 缺失）、构建失败（`-Werror` 把警告升级为
+  错误）、服务器没报端口、夹具非零退出、输出 diff 不符；日志与提示随失败一起打印。
+- 每次运行在 `mktemp -d` 里 `ct get`，**不把取包产物提交进仓库**。
 
 ## 7 对 ct-http 的建议（仅报告，未实施）
 
@@ -102,3 +103,24 @@ after=-1
 3. 若需要确定性分片，可提供「回调前按脚本切块」的测试 seam；当前只能在服务器侧控制节奏。
 
 ct-http 仓库本次**零改动**：只用 `ct get` 按 tag 取发布版，本地 checkout 的未提交改动未参与。
+
+## 8 2026-11-17 复核：CT v0.63 / ct-http 0.2.1
+
+CT v0.63 的取包形态变了：`ct get` 写包存储与 `ct.lock`，不再创建 `vendor/`；ct-http
+0.1.0 的 `ct.pkg` 又没有新编译器要求的 `publisher`。原 §2/§3 的 `-I vendor/http` 绕法
+因此失效，保留为 0.1.0 的历史记录。
+
+```console
+$ ct get https://github.com/ct-pkg/http@0.2.1
+installed 1 package(s)
+$ cat ct.lock
+ct/http 0.2.1 git https://github.com/ct-pkg/http 1121bbc9c1d24b3933662d475386e419edde768b . sha256:...
+$ ct build test/fixtures/i1_http_stream.ct --locked -I <ct-sse 仓库根> \
+    -o i1_http_stream --outdir build \
+    --cflags "-Wall -Wextra -Werror" --ldflags "-lcurl"
+$ bash test/integration.sh
+ok i1_http_stream (ct-http 0.2.1, real loopback chunks)
+```
+
+`--locked` 自动补包 include 根，门禁不再需要知道存储路径；`test/integration.sh` 已改为
+0.2.1 + `--locked`，并删除 `warning:` 文本匹配（`-Werror` 的退出码即级别信号）。

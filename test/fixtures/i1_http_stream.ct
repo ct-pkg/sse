@@ -1,7 +1,7 @@
 /*
  * I-1: real path from ct-http chunks to sse_parser events.
  *
- * ct-http v0.1.0 (release tag) uses the `post()` request factory and streams
+ * ct-http v0.2.1 (release tag; same interface as 0.1.0) uses the `post()` request factory and streams
  * the response body through HttpChunkCb(char *data, int len, void *ud). With
  * no body set, http.shim.c sets CURLOPT_HTTPGET=1, so the wire method is GET.
  * The callback borrows the bytes for the duration of the call, which is

@@ -11,11 +11,11 @@
 诊断级别门禁（PH-12）。逐片的状态、红证与判据见 `docs/phases/PH-01…PH-12/card.md`；门禁命令见 §6。
 台账现状见 [planning-audit](../reviews/planning-audit.md)。
 
-**集成门禁**：2026-11-15 首次运行在 `ct get` 的 git fetch 阶段失败（原文
-`ctc: git fetch of 'https://github.com/ct-pkg/http' failed`），复跑同一命令通过
-（`ok i1_http_stream`）。这是取包链路的瞬时问题，不是解析器回归；发布 tag 的源码也可用
-`git clone --branch v0.1.0` 审计（[S16](../reviews/S16-dependency-direction.md) §2.1、§5）。
-记录保留，不列为阻塞项。
+**集成门禁**：2026-11-17 在 CT v0.63 下复核，ct-http 0.1.0 的 `ct.pkg` 缺 `publisher`，
+`ct get` 被新编译器拒绝；改用 ct-http 0.2.1 + `ct build --locked` 后通过
+（`ok i1_http_stream (ct-http 0.2.1, real loopback chunks)`）。2026-11-15 的 0.1.0 记录
+（首次 `ct get` 瞬时失败、复跑通过）保留为历史，不列为阻塞项；审计见
+[S16](../reviews/S16-dependency-direction.md) §2.5、[S13](../reviews/S13-http-integration.md) §8。
 
 ## 2 片序总表
 
@@ -115,9 +115,9 @@
 | 历史 PATCH | `0.8.1` 是 PH-08 窗口内的 fix（第 4 题 retry 查询拆分），不另立 phase |
 | 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH（6.7） |
 | 发版前置 | 全部单包夹具绿；集成门禁绿；零警告；API 与 S0 卡 §3 一致；CHANGELOG 完整 |
-| tag | 每个 phase 收口创建 annotated tag `v<version>` 并指向收口提交（6.7 V-7）；`v0.11.0` 已存在并已推送 |
+| tag | 每个 phase 收口创建 annotated tag `v<version>` 并指向收口提交（6.7 V-7）；`v0.11.0` 已推送，`v0.12.0` 已建（本地） |
 | push | 分支推送需 owner 明确授权；phase tag 随收口创建，但仅在收口提交已可从远端追溯时才推（V-7 ④） |
-| 集成门禁 | `ct get` 的首次瞬时失败已在 §1 登记，复跑通过；不作为 release blocker |
+| 集成门禁 | ct-http 0.2.1 + `ct build --locked`，2026-11-17 通过；0.1.0 的瞬时失败是历史记录 |
 | 包清单 | 已完成：`ct.pkg` 含 `publisher = ct`、`ns-root = .`，`ct pkg check .` 输出 `ok: 4 criteria` |
 | 发布 tag | `v0.11.0` 已建并推送；`v0.12.0` 已建（本地，收口提交未推送，按 V-7 ④ 不推 tag） |
 
