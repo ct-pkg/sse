@@ -327,7 +327,7 @@ AI_ENGINEERING_SPEC=<主规范路径> ...                          # 覆盖默�
 | 文档 snippet | `docs/snippets/` 未建；README 代码块是文档示例，未纳入 G4 的 snippet 校验 |
 | Issue 台账 | `issues/` 未建；前缀 `SSE-<n>`（待建） |
 | 决策记录 | `docs/decisions/` 未建；当前裁定见 [docs/requirements.md](docs/requirements.md)、[docs/design.md](docs/design.md) 与 `docs/reviews/` |
-| 版本落点 | `ct.pkg#version`、`README.md` 的 `Package version:` 行（2026-11-17 当前 `0.12.0`） |
+| 版本落点 | `ct.pkg#version`、`README.md` 的 `Package version:` 行（2026-11-17 当前 `0.13.0`） |
 | 偏离项 | 无（见 0.3） |
 
 ### 0.2 话术路由

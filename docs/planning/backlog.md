@@ -87,10 +87,11 @@ include 根改成包根。
 1. **GAP-1 门禁层**：`tools/check.sh` 的 G0–G9、`issues/`、`docs/decisions/`、`docs/snippets/`
    尚未落地。G0 失败使项目按 11.5 L-3 不得新开 phase；补齐门禁本身建议作为**维护任务**
    （不立 phase）或由用户签字走 `deviation:`。见 [planning-audit](../reviews/planning-audit.md) GAP-1。
-2. **PH-13 Linux runner**：是否提供可运行 CT 的 Linux runner（或授权用远端 CI）；没有 runner
-   就无法产出 E-1 要求的 LSan 原始输出。
-3. **PH-12 判定口径**：本轮按“CT JSON 诊断 + C 警告由 `-Werror` 升级、构建退出码判定”收口；
-   若要求必须由 CT 直接结构化输出 C 编译警告，则 PH-12 仍需等待 CT 能力，本轮不伪装收口。
+
+**已决复核**：PH-13 的 Linux runner 已解除（podman Ubuntu 24.04 + 本地构建的 Linux CT，
+见 [lsan-linux](../reviews/lsan-linux.md)）。PH-12 按“CT JSON 诊断 + C 警告由 `-Werror`
+升级、构建退出码判定”收口；若要求 CT 直接结构化输出 C 编译警告，需另立新条目，不回写
+已收口的 PH-12。
 
 ## 5 与其他文档的关系
 
@@ -108,10 +109,10 @@ include 根改成包根。
 | 构造形态保持自由函数 | 否 | 已完成（决定已落文档） | 无 | 已收口 |
 | PH-12 诊断级别门禁 | 是 | 已收口（`0.12.0`） | 无 | 已收口 |
 | PH-14 ct-http 0.2.1 复核 | 否 | 已完成（0 处 SSE 语义） | 无 | 已收口 |
-| PH-13 Linux LSan | 是 | 阻塞（无 Linux runner） | 等环境 | 不推 |
+| PH-13 Linux LSan | 是 | 已收口（`0.13.0`） | 无 | 已收口 |
 | GAP-1 门禁层 | 待拍板 | 未开始 | 用户批准后新开 phase | 等批准 |
 
-**整体判断**：PH-11、PH-12 已收口；PH-14 复核无工作项；PH-13 仍被环境阻塞。
+**整体判断**：PH-11、PH-12、PH-13 已收口；PH-14 复核无工作项。
 “全部 phase 完成”不是可交付目标，可交付目标是**可执行 phase 全部收口 + 阻塞项留下可复现证据**。
 
-**下一步决定**：完成 PH-14 的 0.2.1 复核记录；PH-13 保持阻塞；GAP-1 等 owner 裁定。
+**下一步决定**：GAP-1 门禁层等 owner 裁定；没有可执行的功能 phase 待办。

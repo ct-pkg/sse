@@ -14,7 +14,7 @@ WHATWG Server-Sent Events parser for CT. Bytes in, `SseEvent`s out.
   Fact check and design rulings: [docs/reviews/S0-facts.md](docs/reviews/S0-facts.md),
   [docs/reviews/S0-battle.md](docs/reviews/S0-battle.md).
 
-Requires CT v0.53.0 or newer (verified with v0.63.0). Package version: 0.12.0.
+Requires CT v0.53.0 or newer (verified with v0.63.0). Package version: 0.13.0.
 
 ## Layout
 

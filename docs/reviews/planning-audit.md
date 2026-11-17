@@ -54,7 +54,7 @@ ls: issues: No such file or directory
 （不立 phase，只补 `tools/check.sh` 与负例），或 ②用户签字登记 `deviation:` 后按新 phase
 处理。本轮不擅自选，也不在缺门禁时宣称 G0–G9 全绿。
 
-### GAP-2 PH-13 仍被环境阻塞
+### GAP-2 PH-13 曾被环境阻塞（2026-11-17 已解除）
 
 ```console
 $ docker --version
@@ -66,13 +66,14 @@ time="…" level=fatal msg="cannot make required directory: mkdir /Users/samxx/.
 ```
 
 macOS 本机没有 Linux runner，ASan 又不支持 `detect_leaks`（[S9-allocator](S9-allocator.md) §5.1）。
-PH-13 的 E-1 要求 Linux 上的原始运行日志，无法用 macOS 计数器替代。**保持阻塞**，
-解除条件不变：可运行 CT 的 Linux runner。
+PH-13 的 E-1 要求 Linux 上的原始运行日志，无法用 macOS 计数器替代。**2026-11-17 已解除**：
+用户提供 podman Ubuntu 24.04 容器，Linux CT 从本地源码构建；23 条夹具 LSan 全绿，负例
+可触发 `LeakSanitizer`，见 [lsan-linux](lsan-linux.md)。本段保留原始阻塞证据。
 
 ## 4 结论与推进顺序
 
 1. **片序不混乱**，不需要重排；本轮不新开 phase。
-2. 先修台账（A-1…A-6），再按既有卡收口 PH-12；PH-14 只做 0.2.1 复核；PH-13 保持阻塞。
-3. “全部 phase 完成”不是可交付目标：PH-13 缺环境、PH-14 无工作项。可交付目标是
-   **可执行 phase 全部收口 + 阻塞项留下可复现证据**。
+2. 先修台账（A-1…A-6），再按既有卡收口 PH-12/PH-13；PH-14 只做 0.2.1 复核。
+3. “全部 phase 完成”不是可交付目标：PH-13 已解除，PH-14 仍无工作项。可交付目标是
+   **可执行 phase 全部收口 + 无工作项的片留下复核证据**。
 4. GAP-1 是下一轮的第一优先项；在它补齐前，任何“G0–G9 全绿”的宣称都不成立。

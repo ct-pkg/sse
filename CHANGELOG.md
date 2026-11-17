@@ -3,6 +3,17 @@
 版本号规则见 `AGENTS.md` 6.7：MINOR 与 phase 对应，PATCH 与 fix 对应。
 0.1.0–0.10.0 的逐片记录见 `docs/phases/PH-01…PH-10/card.md`。
 
+## [0.13.0] - 2026-11-17
+
+PH-13 收口（无公开 API 改动）：
+
+- 在 podman Ubuntu 24.04 容器内用 Linux CT v0.61.1 跑全量 ASan+LSan：
+  23 条夹具全绿，`LeakSanitizer` 计数 0；故意泄漏 16 字节的负例退出 1 且
+  出现 `LeakSanitizer`，证明 LSan 在该环境可触发。
+- macOS 全量 ASan 23 条全绿；macOS 不支持 `detect_leaks`，强制该变量会
+  abort，按平台差异记录，不产出 macOS 的 LSan 结论。
+- 记录：`docs/reviews/lsan-linux.md`。
+
 ## [0.12.0] - 2026-11-17
 
 PH-12 收口（无公开 API 改动）：
