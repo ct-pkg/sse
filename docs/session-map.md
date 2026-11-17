@@ -1,5 +1,21 @@
 # 会话映射
 
+> 维护者：协调者。四列格式按主规范 9.5；每行是一项可独立验收的任务，不把整个 phase 写成一行。
+> 常驻对话：需求池 / 技术池 / 评审；phase 对话按 9.3 命名。
+
+## 1 任务-对话映射
+
+| 任务 | 对话 | 角色 | phase |
+| --- | --- | --- | --- |
+| 核对 phase 规划与台账现状 | `[ct-sse] 技术池` | REQ | —（规划核对） |
+| PH-12 诊断级别门禁 | `[ct-sse] P12 · 诊断级别门禁` | DEV | PH-12 |
+| PH-12 收口核对 | `[ct-sse] 评审` | REVIEW | PH-12 |
+| PH-14 ct-http 0.2.1 复核 | `[ct-sse] P14 · ct-http 复核` | REVIEW | PH-14 |
+| PH-13 Linux LSan | `[ct-sse] P13 · Linux LSan` | DEV | PH-13（阻塞） |
+| 门禁层纳管（GAP-1） | `[ct-sse] 技术池` | REQ | 待开卡 |
+
+## 2 历史会话
+
 | 日期 | 会话 / 主题 | 产出 |
 | --- | --- | --- |
 | 2026-11-15 | S0 事实核对与契约冻结（ct v0.53.0） | `docs/reviews/S0-facts.md`、`docs/reviews/S0-battle.md`、`docs/phases/S0/card.md` |
@@ -14,3 +30,4 @@
 | 2026-11-15 | 五层产物收口 | `docs/reviews/evaluation.md`、`docs/requirements.md`、`docs/planning/roadmap.md`、`docs/phases/PH-01…PH-14/card.md` |
 | 2026-11-15 | PH-11 文档与示例收尾 | `docs/README.md`、`tools/check_links.py`、`tools/check_api.py`、`tools/api_surface.txt`、`test/fixtures/ex_*.ct`、README 注册表示例修正 |
 | 2026-11-15 | 本仓待办与已决事项（包清单、发布 tag、构造形态） | `docs/planning/backlog.md`、roadmap §4/§7、文档索引 |
+| 2026-11-17 | phase 规划与台账核对 | `docs/reviews/planning-audit.md`、roadmap/backlog/AGENTS 0.1 修订 |

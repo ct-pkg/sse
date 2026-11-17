@@ -7,8 +7,9 @@
 ## 1 现在到哪了
 
 已完成并绿的片：契约冻结、解析主体、字段持久、跨 chunk、边界与中断、copy、注册表、
-分配器与 OOM、计数、finish 可观测性、重入拒绝、真实对接。
-逐片的状态、红证与判据见 `docs/phases/PH-01…PH-10/card.md`；门禁命令见 §6。
+分配器与 OOM、计数、finish 可观测性、重入拒绝、真实对接、文档与示例收尾（PH-11）。
+逐片的状态、红证与判据见 `docs/phases/PH-01…PH-11/card.md`；门禁命令见 §6。
+台账现状见 [planning-audit](../reviews/planning-audit.md)。
 
 **集成门禁**：2026-11-15 首次运行在 `ct get` 的 git fetch 阶段失败（原文
 `ctc: git fetch of 'https://github.com/ct-pkg/http' failed`），复跑同一命令通过
@@ -34,17 +35,19 @@
 | PH-09 | 分配器注入、OOM、计数、finish 可观测性、I-1 | 9 | 已收口（回溯卡） | PH-08 | `s9_oom`、`s9_alloc_count`、`s9_finish_clean`、`s9_error_codes` 退出 0；`test/integration.sh` 0 |
 | PH-10 | 回调重入拒绝 | 10 | 已收口（回溯卡） | PH-09 | `bash test/run.sh s10_reentrant`；`s10_reentrant_state` 退出 0 |
 | PH-11 | 文档与示例收尾 | 11 | 已收口 | PH-10 | 见 §3.1；`check_links`/`check_api` 退出 0，三个示例退出 0 |
-| PH-12 | 诊断格式落地后替换门禁读文本 | 12 | 阻塞（CT 能力） | PH-11；CT 结构化诊断 | 见 §3.2 |
+| PH-12 | 诊断格式落地后替换门禁读文本 | 12 | 可开工（CT v0.63 提供 JSON 诊断） | PH-11；CT 结构化诊断 | 见 §3.2 |
 | PH-13 | Linux CI 补 LSan | 13 | 阻塞（CI 环境） | PH-11；Linux runner | 见 §3.3 |
-| PH-14 | ct-http 若含 SSE 逻辑的下沉跟进 | 14 | 条件未触发（当前无项） | PH-11；ct-http 变更 | 见 §3.4 |
+| PH-14 | ct-http 若含 SSE 逻辑的下沉跟进 | 14 | 已复核（v0.2.1 无工作项） | PH-11；ct-http 变更 | 见 §3.4 |
 
 **片序理由**：PH-01–PH-10 按可独立验收的能力切；PH-11 先把文档/示例收口，避免后续片
 在过期文档上施工；PH-12/13/14 各有外部前置条件，判据写不出或环境不具备时保持阻塞，
 不插入已完成片的窗口。
 
-## 3 未开工片的判据与交付物
+## 3 未收口片的判据与交付物
 
-### 3.1 PH-11 文档与示例收尾（0.11.0）
+### 3.1 PH-11 文档与示例收尾（0.11.0，已收口）
+
+> 保留判据作为历史锚点；PH-11 已于 0.11.0 收口，不再是待开工片。
 
 - 交付物：`README.md`、`docs/README.md`（文档索引）、`docs/snippets/`（可运行示例）。
 - 任务：
@@ -59,22 +62,23 @@
 - 回滚：删除 `docs/README.md`、`docs/snippets/` 与 `tools/check_links.py`，README 回退到
   0.10.0 版本；不影响 `sse/` 与既有夹具。
 
-### 3.2 PH-12 诊断格式替换门禁读文本（0.12.0，阻塞）
+### 3.2 PH-12 诊断格式替换门禁读文本（0.12.0，可开工）
 
 - 触发条件：CT 提供按级别可判定的结构化诊断（或等价稳定输出），不再依赖 `warning:` 文本。
+  已满足：CT v0.63.0 的 `--diagnostics=json` 对 CT 语义诊断输出 JSON；C 编译警告由
+  `-Werror` 升级为错误、以构建退出码判定。探针与限制见
+  [diagnostics-format](../reviews/diagnostics-format.md)。
 - 交付物：`test/run.sh` 的警告判定、`docs/reviews/` 的诊断格式记录。
 - 退出判据：
   1. `test/run.sh` 中不再出现 `grep -q 'warning:'`（`grep -c` 为 0）。
   2. 注入一个未使用参数：门禁退出 1，提示来自诊断级别，而不是文本匹配。
   3. 全量夹具在无警告构建下退出 0。
   4. 任务清单每项可独立验收。
-- 阻塞说明：能力未落地前**不做**文本匹配之外的假实现；保持现有临时注释与
-  [S0-closeout](../reviews/S0-closeout.md) D-6 的标注。
-- 回滚：还原 `test/run.sh` 的警告段，恢复文本匹配；不影响夹具本身。
+- 回滚：还原 `test/run.sh` 的警告段；不影响夹具本身。
 
 ### 3.3 PH-13 Linux CI 补 LSan（0.13.0，阻塞）
 
-- 触发条件：有可用的 Linux CI runner，且能安装/运行 CT v0.53.0。
+- 触发条件：有可用的 Linux CI runner，且能安装/运行 CT v0.63.0。
 - 交付物：CI 配置、`docs/reviews/` 的 LSan 运行记录。
 - 退出判据：
   1. `ASAN_OPTIONS=detect_leaks=1 bash test/run.sh <全部夹具>` 在 Linux 上退出 0，且日志
@@ -82,14 +86,17 @@
   2. macOS 上同一命令仍退出 0（不因新增配置回归）。
   3. 任务清单每项可独立验收。
 - 阻塞说明：macOS 的 ASan 不支持 `detect_leaks`（实测原文见
-  [S9-allocator](../reviews/S9-allocator.md) §5.1）；在环境到位前登记为缺口，不用计数器
+  [S9-allocator](../reviews/S9-allocator.md) §5.1）；本机无 Linux runner（`docker` 不存在，
+  `podman machine` 与 `colima` 在当前沙箱下无法创建 VM，原文见
+  [planning-audit](../reviews/planning-audit.md) GAP-2）。在环境到位前登记为缺口，不用计数器
   冒充泄漏结论。
 - 回滚：移除 CI 配置；本地门禁不变。
 
 ### 3.4 PH-14 ct-http 若含 SSE 逻辑的下沉跟进（0.14.0，条件未触发）
 
 - 触发条件：ct-http 的后续版本出现 SSE 解析、事件分发、`text/event-stream` 判断或
-  `Last-Event-ID` 处理（当前 0.1.0 实测为 0 处，见 [S16](../reviews/S16-dependency-direction.md) §2）。
+  `Last-Event-ID` 处理（2026-11-17 复核 v0.2.1，提交 `1121bbc`，`http/`、`test/` 为 0 处；
+  见 [S16](../reviews/S16-dependency-direction.md) §2.4）。
 - 交付物：审计记录、给 ct-http 的接口建议（只报告，不改对方仓库）。
 - 退出判据：
   1. `grep -rni -E "event-stream|server-sent|last-event|data:|event:" http/` 的结果逐条归类，
@@ -106,13 +113,13 @@
 | 当前版本 | `0.11.0`（PH-11 收口） |
 | 下一版 | `0.12.0`（PH-12 收口；MINOR 与 PH 编号一一对应） |
 | 历史 PATCH | `0.8.1` 是 PH-08 窗口内的 fix（第 4 题 retry 查询拆分），不另立 phase |
-| 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH |
+| 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH（6.7） |
 | 发版前置 | 全部单包夹具绿；集成门禁绿；零警告；API 与 S0 卡 §3 一致；CHANGELOG 完整 |
-| tag | 每个 phase 收口一个 annotated tag `v<version>`；**由 USER 在发版时执行** |
-| push | 分支推送需 owner 明确授权；tag 与远端发布由 USER 执行 |
-| 现在不做 | 不打 tag；分支 push 仅在明确授权时执行（本轮文档提交已授权）；集成门禁的 `ct get` 失败先登记，不绕过 |
-| 包清单 | 见 [backlog](backlog.md) 第 1 项：发布者/命名根能力已可用，可立即核对并验收 |
-| 发布 tag | 见 [backlog](backlog.md) 第 2 项：包清单验收后，由 owner 打 annotated tag；现在不打 |
+| tag | 每个 phase 收口创建 annotated tag `v<version>` 并指向收口提交（6.7 V-7）；`v0.11.0` 已存在并已推送 |
+| push | 分支推送需 owner 明确授权；phase tag 随收口创建，但仅在收口提交已可从远端追溯时才推（V-7 ④） |
+| 集成门禁 | `ct get` 的首次瞬时失败已在 §1 登记，复跑通过；不作为 release blocker |
+| 包清单 | 已完成：`ct.pkg` 含 `publisher = ct`、`ns-root = .`，`ct pkg check .` 输出 `ok: 4 criteria` |
+| 发布 tag | `v0.11.0` 已建并推送；下一 phase 收口时按 V-7 建 `v0.12.0` |
 
 ## 5 与提案 S0–S7 的差异
 
@@ -180,4 +187,4 @@ $ bash test/integration.sh   # 0 通过、1 失败、2 前置条件缺失
 | G-3 | `ct`/`ct-ast` 等价性未证 | 第二个前端不可用；不把数量计入门禁通过 |
 | G-4 | 块内残留长度不可观测 | 第 12 题裁定不加接口；由计数快照+行为断言覆盖 |
 | G-5 | 第 9/10 题裁定未留档 | 不代拟；补齐后补评估表，不单独成片 |
-| G-6 | 打包与发版待办 | 不新增 phase；包清单已可开工，tag 待其验收；见 [backlog](backlog.md) |
+| G-6 | 打包与发版待办 | 不新增 phase；包清单已完成，`v0.11.0` 已建并推送；见 [backlog](backlog.md) |

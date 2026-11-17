@@ -20,9 +20,10 @@
   [PH-03](phases/PH-03/card.md)、[PH-04](phases/PH-04/card.md)、
   [PH-05](phases/PH-05/card.md)、[PH-06](phases/PH-06/card.md)、
   [PH-07](phases/PH-07/card.md)、[PH-08](phases/PH-08/card.md)、
-  [PH-09](phases/PH-09/card.md)、[PH-10](phases/PH-10/card.md)
-- 待开工/阻塞片：[PH-11](phases/PH-11/card.md)、[PH-12](phases/PH-12/card.md)、
-  [PH-13](phases/PH-13/card.md)、[PH-14](phases/PH-14/card.md)
+  [PH-09](phases/PH-09/card.md)、[PH-10](phases/PH-10/card.md)、
+  [PH-11](phases/PH-11/card.md)
+- 待收口/阻塞片：[PH-12](phases/PH-12/card.md)（可开工）、
+  [PH-13](phases/PH-13/card.md)（阻塞）、[PH-14](phases/PH-14/card.md)（已复核，无工作项）
 
 ## 3 评审与实测记录
 
@@ -34,6 +35,8 @@
 - ct-http 真实对接：[S13-http-integration.md](reviews/S13-http-integration.md)
 - 契约细则覆盖表（两席 battle）：[S14-coverage.md](reviews/S14-coverage.md)
 - 依赖方向与 ct-http 审计：[S16-dependency-direction.md](reviews/S16-dependency-direction.md)
+- phase 规划与台账核对：[planning-audit.md](reviews/planning-audit.md)
+- 诊断格式与门禁判定：[diagnostics-format.md](reviews/diagnostics-format.md)
 
 ## 4 分析、设计与历史
 
@@ -53,3 +56,5 @@
 - 全量清单与 ASan 子集：[roadmap §6](planning/roadmap.md)
 - 独立集成门禁：`bash test/integration.sh`
 - 文档检查：`python3 tools/check_links.py`、`python3 tools/check_api.py`
+- `tools/check.sh`（G0–G9）：**未建**；缺口见 [planning-audit GAP-1](reviews/planning-audit.md)。
+  在它补齐前，不宣称 G0–G9 通过。
