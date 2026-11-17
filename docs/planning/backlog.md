@@ -82,11 +82,12 @@ include 根改成包根。
 
 **本轮重判**：与包管理器能力无关，结论不变；已完成，不立 phase。
 
-## 4 需要 owner 拍板（2026-11-17）
+## 4 维护任务与已决复核（2026-11-17）
 
-1. **GAP-1 门禁层**：`tools/check.sh` 的 G0–G9、`issues/`、`docs/decisions/`、`docs/snippets/`
-   尚未落地。G0 失败使项目按 11.5 L-3 不得新开 phase；补齐门禁本身建议作为**维护任务**
-   （不立 phase）或由用户签字走 `deviation:`。见 [planning-audit](../reviews/planning-audit.md) GAP-1。
+1. **GAP-1 门禁层**：已按维护任务落地 `tools/check.sh`（g0–g9）与
+   `test/gates/gate_negative.sh`；`issues/README.md` 与 `docs/acceptance-map.md` 同步建好。
+   G4 的 snippet、G5 的逐门禁红证、G8 的提交级检查仍是人工项，见
+   [planning-audit](../reviews/planning-audit.md) GAP-1。
 
 **已决复核**：PH-13 的 Linux runner 已解除（podman Ubuntu 24.04 + 本地构建的 Linux CT，
 见 [lsan-linux](../reviews/lsan-linux.md)）。PH-12 按“CT JSON 诊断 + C 警告由 `-Werror`
@@ -110,9 +111,9 @@ include 根改成包根。
 | PH-12 诊断级别门禁 | 是 | 已收口（`0.12.0`） | 无 | 已收口 |
 | PH-14 ct-http 0.2.1 复核 | 否 | 已完成（0 处 SSE 语义） | 无 | 已收口 |
 | PH-13 Linux LSan | 是 | 已收口（`0.13.0`） | 无 | 已收口 |
-| GAP-1 门禁层 | 待拍板 | 未开始 | 用户批准后新开 phase | 等批准 |
+| GAP-1 门禁层 | 否（维护任务） | 已完成 `tools/check.sh` g0–g9 + 负例 | 人工项按 GAP-1 跟踪 | 已收口 |
 
-**整体判断**：PH-11、PH-12、PH-13 已收口；PH-14 复核无工作项。
-“全部 phase 完成”不是可交付目标，可交付目标是**可执行 phase 全部收口 + 阻塞项留下可复现证据**。
+**整体判断**：PH-01…PH-13 全部收口；PH-14 复核后无工作项。可执行 phase 已全部收口，
+GAP-1 也按维护任务落地。
 
-**下一步决定**：GAP-1 门禁层等 owner 裁定；没有可执行的功能 phase 待办。
+**下一步决定**：维护任务已收口；分支与 tag 的推送由 owner 显式授权后执行。没有可执行的功能 phase 待办。
