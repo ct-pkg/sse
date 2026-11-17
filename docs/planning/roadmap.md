@@ -116,11 +116,11 @@
 | 历史 PATCH | `0.8.1` 是 PH-08 窗口内的 fix（第 4 题 retry 查询拆分），不另立 phase |
 | 版本规则 | 每个 phase 收口 MINOR=PH 编号、PATCH 归零；phase 内 fix 才 +PATCH（6.7） |
 | 发版前置 | 全部单包夹具绿；集成门禁绿；零警告；API 与 S0 卡 §3 一致；CHANGELOG 完整 |
-| tag | 每个 phase 收口创建 annotated tag `v<version>` 并指向收口提交（6.7 V-7）；`v0.11.0` 已推送，`v0.12.0` / `v0.13.0` 已建（本地） |
-| push | 分支推送需 owner 明确授权；phase tag 随收口创建，但仅在收口提交已可从远端追溯时才推（V-7 ④） |
+| tag | 每个 phase 收口创建 annotated tag `v<version>` 并指向收口提交（6.7 V-7）；`v0.11.0` / `v0.12.0` / `v0.13.0` 均已推送 |
+| push | 分支已于 2026-11-17 按 owner 授权推送；phase tag 在四项校验通过后推送（V-7 ④） |
 | 集成门禁 | ct-http 0.2.1 + `ct build --locked`，2026-11-17 通过；0.1.0 的瞬时失败是历史记录 |
 | 包清单 | 已完成：`ct.pkg` 含 `publisher = ct`、`ns-root = .`，`ct pkg check .` 输出 `ok: 4 criteria` |
-| 发布 tag | `v0.11.0` 已建并推送；`v0.12.0` / `v0.13.0` 已建（本地，收口提交未推送，按 V-7 ④ 不推 tag） |
+| 发布 tag | `v0.11.0` / `v0.12.0` / `v0.13.0` 均已建并推送 |
 
 ## 5 与提案 S0–S7 的差异
 
