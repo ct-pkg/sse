@@ -27,7 +27,7 @@
 | A-5 | phase 卡任务清单缺 `effort`（6.6 T-2）；PH-12/13/14 无红证计划（T-7） | `grep -l effort docs/phases/PH-*/card.md` 为空 | PH-12 开卡前补齐；PH-13/14 保持阻塞卡并补 `effort` / `no-test` 说明 |
 | A-6 | `docs/session-map.md` 只有日期 / 会话 / 产出三列，9.5 要求四列 | 原文件 16 行 | 改为任务 / 对话 / 角色 / phase 四列 |
 | A-7 | PH-14 的审计基线停在 ct-http 0.1.0，而 0.2.0/0.2.1 已发布 | `git ls-remote --tags` 见 v0.2.0、v0.2.1；S16 原文写 0.1.0 | 复核 0.2.1（提交 `1121bbc`）：`http/`、`test/` 无 SSE 语义，更新 S16 与 PH-14 卡；仍无工作项 |
-| A-8 | PH-12 的阻塞条件“CT 无结构化诊断”已不成立 | `ct --version` → `v0.63.0`；`ct build … --diagnostics=json` 对 CT 语义错误输出 JSON（含 `severity`） | 按“CT 诊断用 JSON、C 编译警告用 `-Werror` + 退出码”收口；细节见 [diagnostics-format](diagnostics-format.md) |
+| A-8 | PH-12 的阻塞条件“CT 无结构化诊断”已不成立 | `ct --version` → `v0.63.0`；`ctc check … --diagnostics=json` 对 CT 语义错误输出 JSON（含 `severity`），`ct build` 也输出 `warnings` 数组 | 按“CT 诊断用 JSON、C 编译警告用 `-Werror` + 退出码”收口；细节见 [diagnostics-format](diagnostics-format.md) |
 
 ## 3 真正的缺口（不改写为通过）
 
