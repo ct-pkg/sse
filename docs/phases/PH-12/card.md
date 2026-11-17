@@ -1,42 +1,57 @@
 # PH-12：诊断格式落地后替换门禁读文本
 
-> 编号 `PH-12`；目录 `docs/phases/PH-12/`；`version-minor` 12；规范版本 1.10.0。
-> 状态：**阻塞（CT 能力）**。
-> 依据：第 11 题裁定；[S0-closeout](../../reviews/S0-closeout.md) D-6。
+> 编号 `PH-12`；目录 `docs/phases/PH-12/`；`version-minor` 12；规范版本 1.15.0。
+> 状态：**进行中**（T1 红证先落，T2 实现后收口）。
+> 依据：第 11 题裁定；[S0-closeout](../../reviews/S0-closeout.md) D-6；
+> [diagnostics-format](../../reviews/diagnostics-format.md)。
 
 ## 1 开卡必填
 
 | 字段 | 内容 |
 | --- | --- |
-| 目标 | 把“构建警告”从文本匹配换成按诊断级别判定，消除临时门禁 |
-| 范围 | 做：`test/run.sh` 警告判定、诊断格式记录、负例；不做：在能力未落地前自造解析器 |
-| 交付物 | `test/run.sh` 修订；`docs/reviews/diagnostics-format.md` |
-| 依赖 | PH-11；CT 提供结构化诊断或稳定的级别输出 |
-| 规范版本 | 1.10.0 |
+| 目标 | 把“构建警告”从 `warning:` 文本匹配换成按诊断级别判定，消除临时门禁 |
+| 范围 | 做：`test/run.sh` 的警告判定、负例夹具、诊断格式记录；不做：在 C 诊断仍为文本时自造解析器，不改 `sse/` |
+| 交付物 | `test/gates/g12_warning.sh`；`test/run.sh` 修订；`docs/reviews/diagnostics-format.md` |
+| 依赖 | PH-11；CT v0.63.0 的 `--diagnostics=json`；`-Werror` 级别升级 |
+| 规范版本 | 1.15.0 |
 | version-minor | 12 |
-| 已知风险 | 把 `warning:` 文本换成另一种文本匹配，等于没换；CT 输出不稳定 |
+| 已知风险 | 把 `warning:` 换成另一种文本匹配，等于没换；CT L0 将来输出非致命警告时退出码仍为 0 |
 
 ## 2 任务清单
 
-| id | 交付物 | 验收命令 | 提交 | 可单独回滚 |
-| --- | --- | --- | --- | --- |
-| T1 | 诊断格式探针与记录 | `ct build ... 2>&1` 的原始输出 | 计划：`docs(sse): PH-12 T1 诊断格式` | 是 |
-| T2 | 门禁按级别判定 | `bash test/run.sh s1_construct`；注入警告负例 | 计划：`test(sse): PH-12 T2 诊断门禁` | 是 |
+| id | deliverable | verify | effort | 提交 | 可单独回滚 |
+| --- | --- | --- | --- | --- | --- |
+| T1 | `test/gates/g12_warning.sh`：断言门禁不再用文本匹配、注入未使用参数必须失败 | `bash test/gates/g12_warning.sh`（实现前红、实现后绿） | S | `test(sse): PH-12 T1 诊断级别门禁红` | 是 |
+| T2 | `test/run.sh`：删除 `grep -q 'warning:'`，改由 `-Werror` + 构建退出码判定 | `bash test/run.sh s1_construct`；`bash test/gates/g12_warning.sh` | S | `fix(sse): PH-12 T2 构建警告按级别判定` | 是 |
 
 ## 3 退出判据
 
 | # | 判据 | 命令/证据 |
 | --- | --- | --- |
 | E-1 | `test/run.sh` 中 `grep -q 'warning:'` 的计数为 0 | `grep -c "grep -q 'warning:'" test/run.sh` 输出 0 |
-| E-2 | 注入一个未使用参数：门禁退出 1，原因来自诊断级别 | 负例构建日志 + 退出码 |
-| E-3 | 无警告构建下全量夹具退出 0 | 全量命令（roadmap §6） |
-| E-4 | 任务清单每项可独立验收（6.6 T-6） | 两条 `verify` 分别单跑 |
+| E-2 | 注入一个未使用参数：门禁退出 1，原因来自诊断级别 | `bash test/gates/g12_warning.sh` 的负例构建退出码 1 |
+| E-3 | 无警告构建下全量夹具退出 0 | roadmap §6 全量命令，逐条 `ok` |
+| E-4 | 任务清单每项可独立验收（6.6 T-6） | T1/T2 的 `verify` 分别单跑 |
 
 ## 4 回滚
 
-还原 `test/run.sh` 的警告段与 `docs/reviews/diagnostics-format.md`；夹具不受影响。
+删除 `test/gates/g12_warning.sh`；`test/run.sh` 恢复到 0.11.0 的文本匹配段；`docs/reviews/diagnostics-format.md`
+保留为探针记录。`sse/` 与既有夹具不受影响。
 
-## 5 阻塞条件
+## 5 红证计划与冻结
 
-- CT 未提供可按级别判定的诊断时**不开工**；现有文本匹配保留并继续标注为临时方案。
-- 解除条件：`ct build` 能输出机器可判定的诊断级别（或提供等价接口）。
+- T1 先落：`test/gates/g12_warning.sh` 在实现前检查到 `test/run.sh` 仍含
+  `grep -q 'warning:'`，退出 1；红证写入 §6。
+- T2 后落：删除文本匹配后同一脚本转绿；注入未使用参数的负例仍退出 1。
+- T-7 例外：`docs/reviews/diagnostics-format.md` 是探针记录，不含行为改动；随台账提交。
+- 退出判据与任务清单在 T1 提交后冻结；本卡施工期间不开 PH-13/PH-14。
+
+## 6 收口记录
+
+- T1 红：`baseline: 771c8da`；`bash test/gates/g12_warning.sh` →
+  `FAIL g12_warning: test/run.sh still matches 'warning:' text`，退出码 1。
+- T2 绿：待实现后回填。
+- E-3：待实现后回填。
+- 版本：`0.11.0` → `0.12.0`（待 T2 同提交）。
+- tag：待收口提交后建 annotated `v0.12.0`；分支未推送，按 V-7 ④ 不推 tag。
+- 遗留：无（PH-13 保持环境阻塞，PH-14 无工作项）。
