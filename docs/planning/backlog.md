@@ -84,9 +84,9 @@ include 根改成包根。
 
 ## 4 需要 owner 拍板（2026-11-17）
 
-1. **GAP-1 门禁层**：是否批准另立一个 phase，把 `tools/check.sh` 的 G0–G9、`issues/`、
-   `docs/decisions/`、`docs/snippets/` 补齐；在它完成前，项目按 11.5 L-3 处于“已开 phase 可收口、
-   不得新开 phase”的状态。见 [planning-audit](../reviews/planning-audit.md) GAP-1。
+1. **GAP-1 门禁层**：`tools/check.sh` 的 G0–G9、`issues/`、`docs/decisions/`、`docs/snippets/`
+   尚未落地。G0 失败使项目按 11.5 L-3 不得新开 phase；补齐门禁本身建议作为**维护任务**
+   （不立 phase）或由用户签字走 `deviation:`。见 [planning-audit](../reviews/planning-audit.md) GAP-1。
 2. **PH-13 Linux runner**：是否提供可运行 CT 的 Linux runner（或授权用远端 CI）；没有 runner
    就无法产出 E-1 要求的 LSan 原始输出。
 3. **PH-12 判定口径**：本轮按“CT JSON 诊断 + C 警告由 `-Werror` 升级、构建退出码判定”收口；

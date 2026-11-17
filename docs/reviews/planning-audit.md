@@ -49,7 +49,10 @@ ls: issues: No such file or directory
 2. 没有 `issues/`，G6 的“每个 Issue 只有一个去向”无从检查；也没有 `docs/decisions/`，关键裁定散在 reviews 里。
 3. 按 11.5 L-3，未落库/未纳管会拦住**新开** phase；已开 phase 仍可收口。因此本轮只收口既有 PH-12，不新开 phase。
 
-处置：登记为 GAP-1，建议另立一个“工程门禁纳管”的 phase（需要用户批准），不在本轮用临时脚本冒充 G0–G9。
+处置：登记为 GAP-1。这里有一个治理死锁：G0 因缺 `tools/check.sh` 失败，按 11.5 L-3
+“不得开新 phase”；而补齐门禁又不宜绕过门禁流程。可行路径只有两条：①作为**维护任务**
+（不立 phase，只补 `tools/check.sh` 与负例），或 ②用户签字登记 `deviation:` 后按新 phase
+处理。本轮不擅自选，也不在缺门禁时宣称 G0–G9 全绿。
 
 ### GAP-2 PH-13 仍被环境阻塞
 
