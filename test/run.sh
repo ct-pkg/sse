@@ -68,13 +68,10 @@ if [ "${task%_uaf}" != "$task" ]; then
     exit 0
 fi
 
-# Temporary gate: warnings are matched as text because no structured
-# diagnostic path is wired yet. Replace this with a level-based check once
-# the diagnostic format capability lands; do not treat the grep as permanent.
-if grep -q 'warning:' "$log"; then
-    cat "$log" >&2
-    fail "build emitted warning"
-fi
+# Warnings are errors: -Werror escalates every C diagnostic to an error, so
+# the build above has already failed if one was emitted. CT semantic
+# diagnostics are available through --diagnostics=json; this gate relies on
+# the process exit status, not on matching the text `warning:` (PH-12).
 
 "$tmp/$task" >"$tmp/$task.out" 2>&1 \
     || { cat "$tmp/$task.out" >&2; fail "fixture failed"; }

@@ -1,7 +1,7 @@
 # PH-12：诊断格式落地后替换门禁读文本
 
 > 编号 `PH-12`；目录 `docs/phases/PH-12/`；`version-minor` 12；规范版本 1.15.0。
-> 状态：**进行中**（T1 红证先落，T2 实现后收口）。
+> 状态：**已收口**（0.12.0；PH-13 未开）。
 > 依据：第 11 题裁定；[S0-closeout](../../reviews/S0-closeout.md) D-6；
 > [diagnostics-format](../../reviews/diagnostics-format.md)。
 
@@ -48,10 +48,11 @@
 
 ## 6 收口记录
 
-- T1 红：`baseline: 771c8da`；`bash test/gates/g12_warning.sh` →
+- T1 红：`baseline: 584c781`（test 提交的父提交；红跑在 771c8da，.gitignore 不影响该断言）；`bash test/gates/g12_warning.sh` →
   `FAIL g12_warning: test/run.sh still matches 'warning:' text`，退出码 1。
-- T2 绿：待实现后回填。
-- E-3：待实现后回填。
-- 版本：`0.11.0` → `0.12.0`（待 T2 同提交）。
-- tag：待收口提交后建 annotated `v0.12.0`；分支未推送，按 V-7 ④ 不推 tag。
+- T2 绿：`bash test/gates/g12_warning.sh` → `ok g12_warning (level-based, exit=1)`；
+  `bash test/run.sh s1_construct` → `ok s1_construct`。
+- E-3：全量 23 条夹具与示例逐条 `ok`；`bash test/gates/g12_warning.sh` 绿。
+- 版本：`0.11.0` → `0.12.0`；`ct.pkg#version` 与 README `Package version:` 同提交对齐。
+- tag：收口提交后建 annotated `v0.12.0`；分支未推送，按 V-7 ④ 不推 tag。
 - 遗留：无（PH-13 保持环境阻塞，PH-14 无工作项）。

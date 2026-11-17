@@ -21,9 +21,9 @@
   [PH-05](phases/PH-05/card.md)、[PH-06](phases/PH-06/card.md)、
   [PH-07](phases/PH-07/card.md)、[PH-08](phases/PH-08/card.md)、
   [PH-09](phases/PH-09/card.md)、[PH-10](phases/PH-10/card.md)、
-  [PH-11](phases/PH-11/card.md)
-- 待收口/阻塞片：[PH-12](phases/PH-12/card.md)（可开工）、
-  [PH-13](phases/PH-13/card.md)（阻塞）、[PH-14](phases/PH-14/card.md)（已复核，无工作项）
+  [PH-11](phases/PH-11/card.md)、[PH-12](phases/PH-12/card.md)
+- 阻塞/无工作项：[PH-13](phases/PH-13/card.md)（阻塞）、
+  [PH-14](phases/PH-14/card.md)（已复核，无工作项）
 
 ## 3 评审与实测记录
 
